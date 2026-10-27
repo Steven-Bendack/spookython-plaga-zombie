@@ -1,0 +1,13 @@
+[project]
+name = "plaga-zombie-manta"
+version = "0.1.0"
+description = "SpookyThon 2026 Track B: epidemic simulator and vaccination strategy tournament for Manta"
+requires-python = ">=3.12"
+dependencies = ["numpy>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

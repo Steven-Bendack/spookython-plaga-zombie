@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Secrets and credentials: never commit
+.env
+.env.*
+*.pem
+*.key
+credentials*
+.aws/
+
+# Node / build
+node_modules/
+dist/
+.aws-sam/
+samconfig.toml
+.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local outputs
+*.log
+prof.out
