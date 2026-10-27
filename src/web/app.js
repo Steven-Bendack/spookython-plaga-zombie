@@ -906,6 +906,76 @@ function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
   return events.sort((a, b) => a.day - b.day);
 }
 
+// ---------- arrival: how the plague gets to Manta (plane, ship or car) ----------
+
+// Ways into the city. The market is next to the port, schools fill up from the buses on the road,
+// and anywhere else the seed picks the way in, so the same link always shows the same arrival.
+const ENTRIES = [
+  { kind: "plane", at: [-0.9460, -80.6788], from: [-0.80, -80.95], text: "en avión al aeropuerto Eloy Alfaro" },
+  { kind: "ship", at: [-0.9335, -80.7160], from: [-0.83, -80.80], text: "en barco al puerto de Manta" },
+  { kind: "car", at: [-0.9930, -80.6620], from: [-1.06, -80.55], text: "en carro por la vía a Portoviejo" },
+];
+
+const VEHICLES = {
+  plane: '<svg viewBox="0 0 48 48"><path d="M44 24c0-1.6-1.4-2.6-3-2.6H30L19 6h-4l5.5 15.4H11L7 16H4l2.5 8L4 32h3l4-5.4h9.5L15 42h4l11-15.4h11c1.6 0 3-1 3-2.6z"/></svg>',
+  ship: '<svg viewBox="0 0 48 48"><path d="M6 30h36l-5 9H11z"/><path d="M12 30V21h24v9z" opacity=".85"/><path d="M18 21v-7h8v7zM28 21v-5h5v5z"/></svg>',
+  car: '<svg viewBox="0 0 48 48"><path d="M8 30v-6l5-8h18l7 8h3c2 0 3 1 3 3v3z"/><circle cx="15" cy="32" r="4.5"/><circle cx="35" cy="32" r="4.5"/><path d="M16 18h6v6h-9zM25 18h5l5 6H25z" fill="#cfe9ff"/></svg>',
+};
+
+function arrivalFor(run, cfg) {
+  const zero = run.bitten.find((p) => p[2] === 0) || run.bitten[0];
+  if (!zero) return null;
+  const byPlace = { market: "ship", school: "car" }[cfg.seed_location];
+  const kind = byPlace || ["plane", "ship", "car"][Math.abs(cfg.seed) % 3];
+  return { entry: ENTRIES.find((e) => e.kind === kind), zero: [zero[0], zero[1]] };
+}
+
+// Moves a vehicle along a short path, then draws the trail to patient zero.
+async function arrival(token) {
+  const plan = arrivalFor(mapState.run, (mapState.split ? mapState.split.data : mapState.data).config);
+  if (!plan) return;
+  const map = mapState.leaflet;
+  const { entry, zero } = plan;
+  const icon = L.divIcon({ className: "", iconSize: [44, 44], iconAnchor: [22, 22],
+    html: `<div class="vehicle vehicle--${entry.kind}"><div class="vehicle__body">${VEHICLES[entry.kind]}</div></div>` });
+  const marker = L.marker(entry.from, { icon, interactive: false, keyboard: false }).addTo(map);
+  const trail = L.polyline([entry.from], { color: "#ff3b3b", weight: 3, dashArray: "6 8", opacity: 0.85, interactive: false }).addTo(map);
+  // The ticker is redrawn every frame, so the caption rides on the vehicle.
+  marker.bindTooltip(`La plaga llega ${entry.text}`, { permanent: true, direction: "top", offset: [0, -20], className: "vehicle-label" }).openTooltip();
+  try {
+    await flyAndWait(L.latLngBounds([entry.from, entry.at, zero]).pad(0.25).getCenter(), 13, 1);
+    const legs = [[entry.from, entry.at, 2200], [entry.at, zero, 900]];
+    for (const [a, b, ms] of legs) {
+      const el = marker.getElement()?.querySelector(".vehicle__body");
+      const pa = map.latLngToContainerPoint(a);
+      const pb = map.latLngToContainerPoint(b);
+      const angle = (Math.atan2(pb.y - pa.y, pb.x - pa.x) * 180) / Math.PI;
+      // The plane turns with its heading; ship and car only face left or right.
+      if (el) el.style.transform = entry.kind === "plane" ? `rotate(${angle}deg)` : (pb.x < pa.x ? "scaleX(-1)" : "");
+      const t0 = performance.now();
+      while (token === mapState.playToken) {
+        const t = Math.min(1, (performance.now() - t0) / ms);
+        const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+        const here = [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e];
+        marker.setLatLng(here);
+        trail.addLatLng(here);
+        drawPeople();
+        if (t >= 1) break;
+        await wait(16);
+      }
+      if (token !== mapState.playToken) return;
+      if (a === entry.from) {
+        marker.getElement()?.querySelector(".vehicle")?.classList.add("is-landed");
+        sound.bite();
+      }
+    }
+    await wait(500);
+  } finally {
+    map.removeLayer(marker);
+    map.removeLayer(trail);
+  }
+}
+
 // ---------- automatic camera: fly to the moments that matter, then back to the city ----------
 
 const cameraOn = () => mapState.camera && !motionOff();
@@ -1059,6 +1129,10 @@ function play(resume = false) {
   }
   $("#play").textContent = "❚❚";
   $("#play").setAttribute("aria-label", "Pausa");
+  if (!resume && mapState.day === 0 && cameraOn() && !mapState.split) {
+    arrival(token).then(() => { if (token === mapState.playToken) play(true); });
+    return;
+  }
   let last = performance.now();
   const step = (now) => {
     const speed = mapState.speed; // days per second
