@@ -366,6 +366,52 @@
       </div>
     </section>
 
+    <section class="sheet ui challenge" id="panel-challenge" aria-label="¿Le ganas al comité?">
+      <div class="drawer__head">
+        <h2 class="drawer__title">¿Le ganas al comité?</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body">
+        <p class="challenge__intro">Tienes las mismas vacunas y la misma suerte que el algoritmo del comité: <strong id="chDoses"></strong>. Elige <strong>a quién vacunar primero</strong>, hasta 3 grupos y en orden. Las condiciones son las del panel Condiciones.</p>
+        <div class="challenge__groups" id="chGroups" role="group" aria-label="Grupos a vacunar primero"></div>
+        <div class="challenge__actions">
+          <p class="challenge__plan" id="chPlan">Toca un grupo para empezar tu plan.</p>
+          <button type="button" class="btn btn--primary" id="chPlay" disabled>¡Juega contra el comité!</button>
+        </div>
+        <p class="verdict__error" id="chError" role="alert" hidden></p>
+        <div class="challenge__result" id="chResult" hidden aria-live="polite">
+          <div class="score">
+            <div class="score__side score__side--you">
+              <span class="score__who">Tú</span>
+              <span class="score__value" id="chYou"></span>
+              <span class="score__label">contagios evitados</span>
+              <span class="score__plan" id="chYouPlan"></span>
+            </div>
+            <span class="score__vs">VS</span>
+            <div class="score__side score__side--committee">
+              <span class="score__who">Comité</span>
+              <span class="score__value" id="chThem"></span>
+              <span class="score__label">contagios evitados</span>
+              <span class="score__plan" id="chThemPlan"></span>
+            </div>
+          </div>
+          <p class="challenge__verdict" id="chVerdict"></p>
+          <div class="seedstrip">
+            <div class="seedstrip__head">
+              <span id="chStripTitle"></span>
+              <span class="legend"><i class="sw sw--win"></i>ganas <i class="sw sw--tie"></i>empate <i class="sw sw--loss"></i>gana el comité</span>
+            </div>
+            <div class="seedstrip__ticks" id="chStrip" role="img"></div>
+          </div>
+          <div class="chart-box chart-box--short"><canvas id="chChart" aria-label="Zombies por día: tu plan, el comité, azar y no hacer nada"></canvas></div>
+          <div class="challenge__actions">
+            <span class="hint" id="chSeed"></span>
+            <button type="button" class="btn btn--ghost" id="chReseed">Otra semilla</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Bottom: the command dock -->
     <footer class="dock ui" id="dock">
       <nav class="dock__nav" aria-label="Paneles">
@@ -427,6 +473,7 @@
       </div>
 
       <div class="dock__run">
+        <button type="button" class="btn btn--challenge" data-panel="challenge" aria-pressed="false">¿Le ganas al comité?</button>
         <button type="submit" form="form" class="btn btn--primary btn--run" id="run">Recomendar</button>
         <p class="dock__hint" id="runStatus">Toca un barrio para ver su ficha</p>
       </div>
