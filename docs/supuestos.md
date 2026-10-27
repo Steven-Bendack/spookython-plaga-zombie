@@ -108,9 +108,9 @@ Evaluamos y **descartamos** Collective Influence ([Morone y Makse 2015, Nature](
 
 | Escenario | R0 | Mordido (días) | Zombi (días) | Fuente o justificación |
 |---|---|---|---|---|
-| Zombi clásico (cine) | 1,25 | 0,5 | 21 | [Alemi et al. 2015, Physical Review E](https://arxiv.org/abs/1503.01104) ajustaron *Night of the Living Dead* y *Shaun of the Dead*: α = 0,8 (los humanos destruyen zombis a 0,8 veces la tasa a la que los zombis muerden). Cada zombi muerde en promedio 1/α = 1,25 personas antes de ser destruido. Conversión con vida media de 30 minutos. Los zombis no se curan: "Exorcizado" = destruido; 21 días es el tope del modelo (supuesto) |
-| The Walking Dead | 1,25 | 1,5 | 21 | Caminantes lentos como el zombi clásico (mismo α de Alemi et al.). En la serie el mordido tiene fiebre, muere en uno o dos días y se levanta: latencia 1,5 días (**supuesto de ficción**) |
-| Guerra Mundial Z | 6,0 | 0,5 | 21 | En la película (2013) la conversión tarda 12 segundos y los zombis corren en hordas. No hay estimación publicada: R0 = 6 es un **supuesto de ficción**. El modelo es diario y no baja de 1 día de latencia, así que aquí la plaga es más lenta que en la película |
+| Zombi lento (inspirado en el zombi clásico del cine) | 1,25 | 0,5 | 21 | [Alemi et al. 2015, Physical Review E](https://arxiv.org/abs/1503.01104) ajustaron películas de zombis: α = 0,8 (los humanos destruyen zombis a 0,8 veces la tasa a la que los zombis muerden). Cada zombi muerde en promedio 1/α = 1,25 personas antes de ser destruido. Conversión con vida media de 30 minutos. Los zombis no se curan: "Exorcizado" = destruido; 21 días es el tope del modelo (supuesto) |
+| Caminantes (inspirado en las series de caminantes) | 1,25 | 1,5 | 21 | Zombis lentos como el zombi clásico (mismo α de Alemi et al.). El mordido tiene fiebre, muere en uno o dos días y se levanta: latencia 1,5 días (**supuesto de ficción**) |
+| Horda rápida (inspirada en las hordas rápidas del cine) | 6,0 | 0,5 | 21 | La conversión tarda segundos y los zombis corren en grupo. No hay estimación publicada: R0 = 6 es un **supuesto de ficción**. El modelo es diario y no baja de 1 día de latencia, así que aquí la plaga es más lenta que en la pantalla |
 | Influenza H1N1 2009 | 1,46 | 1,5 | 4 | R0 mediano de la pandemia de 2009 (Biggerstaff et al. 2014); incubación de influenza A ≈ 1,4 días (Lessler et al. 2009); 4 días contagioso es un supuesto |
 
 ## 8. El mapa

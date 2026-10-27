@@ -15,9 +15,10 @@
 3. **Mapa de decisión precalculado.** 72 condiciones con su mejor estrategia: en el Brote Sorpresa la respuesta aparece al instante y luego se confirma con la semilla del jurado.
 4. **Realismo de información.** El comité solo ve los Zombies **detectados** (60 %, con 2 días de retraso). No ve a los Mordidos. Las dosis que se pierden en ellos se muestran, no se esconden.
 5. **Calibrado con datos reales de Manta.** El exceso de muertes de 2020 (Registro Civil) muestra que la primera ola crecía 8,4 % por día; el modelo reproduce ese crecimiento con **R0 = 2,35** y la forma de la ola coincide (5 semanas sobre la mitad del pico en la realidad, 4 en el modelo).
-6. **Evidencia real frente a ficción.** El mismo motor corre COVID-19 Manta 2020, influenza 2009, el zombi clásico del cine ([Alemi et al. 2015](https://arxiv.org/abs/1503.01104)), The Walking Dead y Guerra Mundial Z. Cada uno pide una estrategia distinta.
+6. **Evidencia real frente a ficción.** El mismo motor corre COVID-19 Manta 2020, influenza 2009 y tres plagas inspiradas en el cine de zombis (el zombi lento, con parámetros de [Alemi et al. 2015](https://arxiv.org/abs/1503.01104); los caminantes y la horda rápida). Cada una pide una estrategia distinta.
 7. **Mapa animado de Manta.** Vuelo de Ecuador a Manta y, día por día, cada persona mordida de la **corrida típica** (la mediana de personas salvadas) se enciende sobre el mapa real, con contadores y titulares de lo que pasa en la corrida ("la plaga llega a Tarqui", "ya va el 25 % de la ciudad"…). Se compara sin intervenir, azar y la estrategia.
-8. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
+8. **Intro con música propia.** La banda sonora (zumbido grave, latido y viento) se genera en vivo en el navegador con Web Audio: no usa archivos ni música con derechos. El latido se acelera cuando la ciudad se llena de zombis.
+9. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
 
 ## El modelo en un minuto
 
