@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .disease import neighbor_sum
-from .population import City
+from .population import BARRIO_NAMES, ELDER, City
 
 BASELINES = ("none", "random")
 CANDIDATES = ("degree", "acquaintance", "ring", "ring_hubs")
@@ -44,6 +44,51 @@ LABELS = {
 }
 
 
+# "¿Le ganas al comité?": a person ranks up to three groups to vaccinate first.
+# The plan travels as a policy name, "player:students,barrio:Tarqui", so it gets
+# its own random stream and the same luck as every other policy.
+PLAYER_PREFIX = "player:"
+PLAYER_MAX_GROUPS = 3
+PLAYER_GROUPS = {
+    "students": "Estudiantes (colegios)",
+    "workers": "Trabajadores",
+    "elders": "Adultos mayores",
+    "market": "Gente del mercado central",
+    **{f"barrio:{b}": f"Barrio {b}" for b in BARRIO_NAMES},
+}
+
+
+def player_policy(groups) -> str:
+    """Validated policy name for a player's plan (1 to 3 known groups, in order)."""
+    groups = [str(g) for g in groups]
+    if not 1 <= len(groups) <= PLAYER_MAX_GROUPS or len(set(groups)) != len(groups):
+        raise ValueError(f"el plan debe tener de 1 a {PLAYER_MAX_GROUPS} grupos distintos")
+    unknown = [g for g in groups if g not in PLAYER_GROUPS]
+    if unknown:
+        raise ValueError(f"grupo desconocido: {unknown[0]}")
+    return PLAYER_PREFIX + ",".join(groups)
+
+
+def player_groups(policy: str) -> list[str]:
+    return policy[len(PLAYER_PREFIX):].split(",")
+
+
+def player_label(policy: str) -> str:
+    return " → ".join(PLAYER_GROUPS[g] for g in player_groups(policy))
+
+
+def _members(city: City, group: str) -> np.ndarray:
+    if group == "students":
+        return city.is_student
+    if group == "workers":
+        return city.is_worker
+    if group == "elders":
+        return city.age_group == ELDER
+    if group == "market":
+        return city.is_market
+    return city.barrio == BARRIO_NAMES.index(group.split(":", 1)[1])
+
+
 @dataclass
 class Visible:
     """What the committee observes on a given day, per run (rows) and agent (columns)."""
@@ -59,6 +104,14 @@ def priority_keys(policy: str, city: City, seen: Visible) -> np.ndarray:
         g.random(out=noise[row])
     if policy == "random":
         return noise
+    if policy.startswith(PLAYER_PREFIX):
+        # First group first, then the second, then the third; at random inside a
+        # group and for everyone else once the groups are covered.
+        groups = player_groups(policy)
+        tier = np.zeros(city.n)
+        for rank, group in enumerate(groups):
+            tier = np.maximum(tier, np.where(_members(city, group), len(groups) - rank, 0))
+        return tier[None, :] + noise
     if policy == "acquaintance":
         # Picking a random person and then a random contact of theirs reaches each
         # agent with probability proportional to their number of contacts.
