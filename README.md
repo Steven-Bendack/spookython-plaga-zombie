@@ -2,7 +2,7 @@
 
 **SpookyThon 2026 · Track B.** Herramienta del Comité de Contención de Manta: simula día a día cómo se propaga una plaga en una red de contactos de la ciudad, reparte vacunas escasas con distintas estrategias y demuestra con cientos de corridas pareadas cuánta gente salva cada una frente a **no hacer nada** y frente a **vacunar al azar con las mismas dosis**.
 
-> URL pública en AWS: _pendiente de despliegue_ · Vista previa: _pendiente_
+> URL pública en AWS: _pendiente de despliegue (falta la cuenta con Budget)_ · Vista previa en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
 
 ![Arquitectura](docs/arquitectura.png)
 
