@@ -37,6 +37,8 @@ class PolicyResult:
     doses_wasted: np.ndarray     # (runs,) doses given to someone not Sano
     doses_by_day: np.ndarray     # (runs, days+1)
     vaccinated_non_eligible: int  # doses given to visibly non-eligible people (must be 0)
+    bitten_day: np.ndarray       # (n,) day each agent was bitten in the first run, -1 = never
+    vaccinated_day: np.ndarray   # (n,) day each agent got a dose in the first run, -1 = never
 
 
 def run_stream(seed: int, run: int, purpose: int) -> np.random.Generator:
@@ -87,11 +89,16 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
     detected = np.zeros((runs, n), dtype=bool)
     vaccinated = np.zeros((runs, n), dtype=bool)
 
+    bitten_day = np.full(n, -1, dtype=np.int16)    # first run only (for the map)
+    vaccinated_day = np.full(n, -1, dtype=np.int16)
+
     for row, k in enumerate(run_ids):
         seeds = pick_initial_cases(city, cfg, run_stream(cfg.seed, int(k), _SEEDING))
         state[row, seeds] = I
         timer[row, seeds] = sick_days[row, seeds]
         zombie_since[row, seeds] = 0
+        if row == 0:
+            bitten_day[seeds] = 0
 
     counts = np.zeros((runs, days + 1, N_STATES), dtype=np.int32)
     counts[:, 0] = _count_states(state)
@@ -118,6 +125,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         #    which has probability 1 - exp(-pressure) (see disease.py).
         newly_bitten = (state == S) & (luck < infection_pressure(city, log_surv, zombie))
         infected += newly_bitten.sum(axis=1)
+        bitten_day[newly_bitten[0]] = day
 
         # 2. Progress Mordidos and Zombies whose stage ends today.
         timer -= sick
@@ -147,6 +155,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
             wasted += chosen.sum(axis=1) - susceptible_chosen.sum(axis=1)
             np.copyto(state, V, where=susceptible_chosen & dose_works)
             doses_by_day[:, day] = chosen.sum(axis=1)
+            vaccinated_day[chosen[0]] = day
 
         counts[:, day] = _count_states(state)
 
@@ -154,6 +163,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         policy=policy, counts=counts, infected=infected,
         doses_used=doses_by_day.sum(axis=1), doses_wasted=wasted,
         doses_by_day=doses_by_day, vaccinated_non_eligible=non_eligible_hits,
+        bitten_day=bitten_day, vaccinated_day=vaccinated_day,
     )
 
 

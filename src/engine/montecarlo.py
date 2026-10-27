@@ -38,7 +38,16 @@ def run_chunk(task: dict) -> dict:
         "doses_by_day": res.doses_by_day.tolist(),
         "counts": res.counts.tolist(),
         "vaccinated_non_eligible": res.vaccinated_non_eligible,
+        # Run 0 only, as [agent, day] pairs: the map replays this run.
+        "first_run": {
+            "bitten": _pairs(res.bitten_day), "vaccinated": _pairs(res.vaccinated_day),
+        } if task["run_start"] == 0 else None,
     }
+
+
+def _pairs(days: np.ndarray) -> list:
+    idx = np.flatnonzero(days >= 0)
+    return np.column_stack([idx, days[idx]]).tolist()
 
 
 def serial_runner(tasks: list[dict]) -> list[dict]:
@@ -75,6 +84,7 @@ class PolicyRuns:
     doses_by_day: np.ndarray   # (runs, days+1)
     counts: np.ndarray         # (runs, days+1, 5)
     vaccinated_non_eligible: int
+    first_run: dict | None = None  # {"bitten": [[agent, day]...], "vaccinated": [...]}
 
 
 def run_policies(cfg: SimConfig, policies: Iterable[str], runner: Runner = serial_runner,
@@ -119,6 +129,7 @@ def merge_many(plan: list, results: list[dict]) -> list[tuple[float, dict[str, P
                 doses_by_day=np.concatenate([np.asarray(p["doses_by_day"]) for p in parts]),
                 counts=np.concatenate([np.asarray(p["counts"]) for p in parts]),
                 vaccinated_non_eligible=sum(p["vaccinated_non_eligible"] for p in parts),
+                first_run=next((p.get("first_run") for p in parts if p.get("first_run")), None),
             )
         out.append((beta, merged))
     return out
@@ -201,6 +212,7 @@ def tournament(cfg: SimConfig, runner: Runner = serial_runner, candidates=CANDID
         })
     return {
         "beta": beta,
+        "first_runs": {p: r.first_run for p, r in runs.items()},
         "summaries": {p: policy_summary(r, cfg.population) for p, r in runs.items()},
         "random_vs_none": paired(none, rnd),
         "ranking": ranking,

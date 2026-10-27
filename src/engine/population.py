@@ -94,6 +94,19 @@ class City:
         rank[order] = np.arange(self.n) / self.n
         return rank
 
+    @cached_property
+    def coords(self) -> np.ndarray:
+        """(n, 2) approximate lat/lon of each agent's home, for the map only.
+
+        Homes are scattered around their barrio's center; latitude only moves
+        south (inland), because the barrios lie along the coast.
+        """
+        rng = np.random.default_rng(np.random.SeedSequence([self.n, 11]))
+        centers = np.array([(b[1], b[2]) for b in BARRIOS])[self.barrio]
+        lat = centers[:, 0] - np.abs(rng.normal(0, 0.006, self.n))
+        lon = centers[:, 1] + rng.normal(0, 0.007, self.n)
+        return np.column_stack([lat, lon])
+
     def summary(self) -> dict:
         per_layer = np.bincount(self.layer, minlength=len(LAYERS)) // 2
         return {
