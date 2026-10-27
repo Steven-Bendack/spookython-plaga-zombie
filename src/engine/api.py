@@ -11,7 +11,9 @@ import time
 import numpy as np
 
 from .config import ENGINE_VERSION, SimConfig
-from .montecarlo import Runner, serial_runner, tournament
+from dataclasses import replace
+
+from .montecarlo import Runner, paired, run_many, serial_runner, tournament
 from .population import BARRIO_NAMES, BARRIOS, build_city
 from .seir import simulate_policy
 from .strategies import DESCRIPTIONS, LABELS
@@ -32,6 +34,9 @@ def simulate(request: dict, runner: Runner = serial_runner) -> dict:
     result = tournament(cfg, runner)
     best = result["ranking"][0]
     summaries = result["summaries"]
+    wants_plans = cfg.close_market or cfg.close_schools or cfg.budget > 0
+    plans = (closure_plans(cfg, best["name"], result["runs"], runner)
+             if request.get("compare_plans", wants_plans) else None)
     return {
         "config": cfg.to_dict(),
         "certificate": certificate(cfg),
@@ -56,8 +61,57 @@ def simulate(request: dict, runner: Runner = serial_runner) -> dict:
                          "share": summaries[best["name"]]["wasted_share"]},
         "recommendation_text": recommendation_text(cfg, best),
         "map": map_payload(cfg, result["beta"], best),
+        "closure_plans": plans,
         "elapsed_seconds": round(time.perf_counter() - started, 2),
     }
+
+
+PLAN_RUNS = 40  # runs per closure plan (paired with the first runs of "Nada")
+
+PLAN_LABELS = {
+    (False, False): "Solo vacunas",
+    (True, False): "Vacunas + cerrar el mercado",
+    (False, True): "Vacunas + cerrar los colegios",
+    (True, True): "Vacunas + cerrar mercado y colegios",
+}
+
+
+def closure_plans(cfg: SimConfig, strategy: str, runs: dict, runner: Runner) -> dict:
+    """Same seeds, same budget, same vaccine strategy: which closures pay off?
+
+    Each plan closes its places while at least `closure_trigger` Zombies are
+    detected, paying each closed day from the shared budget (1 unit = 1 dose).
+    """
+    combos = list(PLAN_LABELS)
+    k = min(cfg.runs, PLAN_RUNS)  # the first k runs: same seeds as the tournament
+    jobs = [(replace(cfg, runs=k, close_market=m, close_schools=sc), (strategy,)) for m, sc in combos]
+    results = run_many(jobs, runner, chunk_runs=10)
+    full = runs["none"]
+    none = replace(full, infected=full.infected[:k])
+    plans = []
+    for (m, sc), (_, res) in zip(combos, results):
+        r = res[strategy]
+        vs_none = paired(none, r)
+        plans.append({
+            "market": m, "schools": sc, "label": PLAN_LABELS[(m, sc)],
+            "infected_mean": float(r.infected.mean()),
+            "saved_vs_none": vs_none["mean"], "saved_median": vs_none["median"],
+            "spent": float(r.spent.mean()),
+            "market_days": float(r.closed_days[:, 0].mean()),
+            "schools_days": float(r.closed_days[:, 1].mean()),
+        })
+    best = max(plans, key=lambda p: (p["saved_median"], p["saved_vs_none"]))
+    base = plans[0]
+    extra = best["saved_vs_none"] - base["saved_vs_none"]
+    if best is base:
+        text = "Con este presupuesto conviene gastar todo en vacunas: ningún cierre evita más contagios."
+    else:
+        text = (f"Recomendación de cierres: «{best['label'].lower()}». Evita {_num(extra)} contagios más que "
+                f"solo vacunar, con ≈ {_num(best['market_days'] + best['schools_days'])} días de cierre "
+                f"en promedio y un gasto de {_num(best['spent'])} unidades.")
+    return {"plans": plans, "best": best["label"], "text": text, "runs": k,
+            "budget": cfg.budget, "trigger": cfg.closure_trigger,
+            "costs": {"dose": 1, "market_day": cfg.market_cost, "schools_day": cfg.school_cost}}
 
 
 def map_payload(cfg: SimConfig, beta: float, best: dict) -> dict:
@@ -84,7 +138,9 @@ def map_payload(cfg: SimConfig, beta: float, best: dict) -> dict:
         out[key] = {"label": LABELS[name], "bitten": points(res.bitten_day),
                     "vaccinated": points(res.vaccinated_day),
                     # S, E, I, R, V of this run, day by day (the progress bar)
-                    "counts": res.counts[0].tolist()}
+                    "counts": res.counts[0].tolist(),
+                    # [market closed, schools closed] each day of this run
+                    "closed": res.closed_first.astype(int).tolist()}
     return out
 
 
