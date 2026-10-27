@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plaga Zombie · Manta</title>
+  <meta name="description" content="Comité de Contención de Manta: simula la plaga, compara estrategias de vacunación contra no hacer nada y contra el azar, y pon a prueba la recomendación.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f7c7a'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23c8372d'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead__brand">
+      <span class="masthead__mark" aria-hidden="true"></span>
+      <div>
+        <p class="eyebrow">Comité de Contención · Manta</p>
+        <h1>La Plaga Zombie</h1>
+      </div>
+    </div>
+    <p class="masthead__lede">Cambia las condiciones del brote y mira, con cientos de corridas pareadas, cuánta gente salva cada estrategia frente a no hacer nada y frente a vacunar al azar.</p>
+  </header>
+
+  <div class="layout">
+    <!-- Controls -->
+    <aside class="panel controls" aria-label="Condiciones del brote">
+      <section class="controls__block">
+        <h2 class="controls__title">Brote sorpresa</h2>
+        <p class="hint">Un toque aplica el cambio que pide el jurado.</p>
+        <div class="presets" id="presets"></div>
+      </section>
+
+      <form id="form" class="controls__block" autocomplete="off">
+        <h2 class="controls__title">Condiciones</h2>
+
+        <label class="field">
+          <span class="field__label">Contagio (R0) <output id="r0Out"></output></span>
+          <input type="range" name="r0" min="0" max="6" step="0.1">
+          <span class="field__help">Personas que contagia un Zombie en una ciudad sin defensas.</span>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Vacunas por día <output id="dosesOut"></output></span>
+          <input type="range" name="doses_per_day" min="0" max="200" step="1">
+          <span class="field__help" id="dosesHelp"></span>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Eficacia de la vacuna <output id="effOut"></output></span>
+          <input type="range" name="vaccine_efficacy" min="0" max="1" step="0.05">
+        </label>
+
+        <label class="field">
+          <span class="field__label">Dónde empieza</span>
+          <select name="seed_location" id="seedLocation"></select>
+        </label>
+
+        <details class="more">
+          <summary>Más parámetros</summary>
+          <label class="field">
+            <span class="field__label">Llegan las vacunas el día <output id="startOut"></output></span>
+            <input type="range" name="vaccine_start_day" min="0" max="40" step="1">
+          </label>
+          <label class="field">
+            <span class="field__label">Zombies detectados <output id="detOut"></output></span>
+            <input type="range" name="detection_prob" min="0" max="1" step="0.05">
+          </label>
+          <label class="field">
+            <span class="field__label">Días hasta detectar <output id="delayOut"></output></span>
+            <input type="range" name="detection_delay" min="0" max="10" step="1">
+          </label>
+          <label class="field">
+            <span class="field__label">Casos iniciales</span>
+            <input type="number" name="initial_cases" min="1" max="200">
+          </label>
+          <label class="field">
+            <span class="field__label">Corridas por política</span>
+            <input type="number" name="runs" min="10" max="400" step="10">
+          </label>
+          <label class="field">
+            <span class="field__label">Estrategia</span>
+            <select name="strategy" id="strategy"></select>
+          </label>
+        </details>
+
+        <label class="field field--seed">
+          <span class="field__label">Semilla del jurado</span>
+          <span class="seed-row">
+            <input type="number" name="seed" min="0" max="2147483647" inputmode="numeric">
+            <button type="button" class="btn btn--ghost" id="dice" title="Semilla al azar">Al azar</button>
+          </span>
+        </label>
+
+        <div class="instant" id="instant" hidden></div>
+
+        <button type="submit" class="btn btn--primary" id="run">Recomendar</button>
+        <p class="hint" id="runHint">Corre todas las estrategias con la misma semilla y recomienda la que más salva.</p>
+      </form>
+    </aside>
+
+    <!-- Results -->
+    <main class="results" id="results" aria-live="polite">
+      <section class="panel verdict" id="verdict">
+        <div class="verdict__empty" id="empty">
+          <p class="eyebrow">Sin resultados todavía</p>
+          <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. Con la semilla por defecto tarda unos segundos.</p>
+        </div>
+        <div class="verdict__body" id="verdictBody" hidden>
+          <p class="eyebrow">Recomendación</p>
+          <h2 class="verdict__name" id="bestName"></h2>
+          <p class="verdict__text" id="recText"></p>
+          <div class="figures">
+            <div class="figure">
+              <span class="figure__value" id="savedNone"></span>
+              <span class="figure__label">contagios evitados frente a no hacer nada</span>
+              <span class="figure__range" id="savedNoneRange"></span>
+            </div>
+            <div class="figure">
+              <span class="figure__value" id="savedRandom"></span>
+              <span class="figure__label">contagios evitados frente a vacunar al azar</span>
+              <span class="figure__range" id="savedRandomRange"></span>
+            </div>
+            <div class="figure figure--manta">
+              <span class="figure__value" id="savedManta"></span>
+              <span class="figure__label">personas de Manta (escala 1 : <span id="scale"></span>)</span>
+              <span class="figure__range" id="wasted"></span>
+            </div>
+          </div>
+          <div class="seedstrip">
+            <div class="seedstrip__head">
+              <span id="stripTitle"></span>
+              <span class="legend"><i class="sw sw--win"></i>gana <i class="sw sw--tie"></i>empata <i class="sw sw--loss"></i>pierde</span>
+            </div>
+            <div class="seedstrip__ticks" id="strip" role="img"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>Zombies por día</h2>
+          <p class="hint">Línea: promedio. Banda: 90 % de las corridas (percentiles 5 a 95).</p>
+        </div>
+        <div class="chart-box"><canvas id="curveChart" aria-label="Zombies por día para cada política"></canvas></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>Torneo de estrategias</h2>
+          <p class="hint">Misma semilla para todas. "Gana" = menos contagios que Azar en esa misma corrida.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="table">
+            <thead>
+              <tr>
+                <th scope="col">Estrategia</th>
+                <th scope="col" class="num">Contagiados</th>
+                <th scope="col" class="num">Salvados vs Nada</th>
+                <th scope="col" class="num">Salvados vs Azar</th>
+                <th scope="col" class="num">Gana a Azar</th>
+                <th scope="col" class="num">Dosis perdidas</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel jury" id="jury">
+        <div class="panel__head">
+          <h2>Modo Jurado</h2>
+          <p class="hint">Un atacante automático busca los brotes sorpresa donde nuestra estrategia pierde contra Azar.</p>
+        </div>
+        <p class="jury__frontier" id="frontier"></p>
+        <div class="jury__shares" id="shares"></div>
+        <div class="jury__grid">
+          <div class="chart-box chart-box--square"><canvas id="juryChart" aria-label="Escenarios probados por el Modo Jurado"></canvas></div>
+          <div>
+            <h3 class="mini-title">Mapa de decisión precalculado</h3>
+            <p class="hint">Mejor estrategia por condición (vacuna 90 %, inicio en cualquier lugar).</p>
+            <div class="dmap" id="dmap"></div>
+          </div>
+        </div>
+        <div class="jury__actions">
+          <button type="button" class="btn btn--ghost" id="runJury">Atacar con las condiciones actuales</button>
+          <span class="hint" id="juryHint">Prueba unos 30 brotes distintos; tarda alrededor de un minuto.</span>
+        </div>
+      </section>
+
+      <footer class="panel certificate" id="certificate" hidden>
+        <div>
+          <p class="eyebrow">Certificado de reproducibilidad</p>
+          <dl class="cert">
+            <div><dt>Configuración</dt><dd id="certHash"></dd></div>
+            <div><dt>Semilla</dt><dd id="certSeed"></dd></div>
+            <div><dt>Ciudad</dt><dd id="certCity"></dd></div>
+            <div><dt>Motor</dt><dd id="certEngine"></dd></div>
+            <div><dt>Commit</dt><dd id="certCommit"></dd></div>
+            <div><dt>Tiempo</dt><dd id="certTime"></dd></div>
+          </dl>
+        </div>
+        <button type="button" class="btn btn--ghost" id="copyLink">Copiar enlace para repetir</button>
+      </footer>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
