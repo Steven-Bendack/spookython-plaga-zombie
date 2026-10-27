@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from engine.api import meta, simulate  # noqa: E402
+from engine.api import challenge, meta, simulate  # noqa: E402
 from engine.config import SimConfig  # noqa: E402
 from engine.jury import red_team  # noqa: E402
 from engine.mayor import mayor_report  # noqa: E402
@@ -44,6 +44,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if self.path.startswith("/api/simulate"):
                 return self._json(simulate(body, process_pool_runner))
+            if self.path.startswith("/api/challenge"):
+                return self._json(challenge(body, process_pool_runner))
             if self.path.startswith("/api/report"):
                 return self._json(mayor_report(body))
             if self.path.startswith("/api/jury"):

@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from engine.api import meta, simulate  # noqa: E402
+from engine.api import challenge, meta, simulate  # noqa: E402
 from engine.mayor import mayor_report  # noqa: E402
 
 MAX_RUNS = 40
@@ -27,6 +27,10 @@ def app(environ, start_response):
             body = _body(environ)
             body["runs"] = min(int(body.get("runs", MAX_RUNS)), MAX_RUNS)
             return _json(start_response, simulate(body))
+        if method == "POST" and path.endswith("/api/challenge"):
+            body = _body(environ)
+            body["runs"] = min(int(body.get("runs", MAX_RUNS)), MAX_RUNS)
+            return _json(start_response, challenge(body))
         if method == "POST" and path.endswith("/api/report"):
             return _json(start_response, mayor_report(_body(environ)))
         if method == "POST" and path.endswith("/api/jury"):
