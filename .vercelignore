@@ -1,0 +1,7 @@
+.venv
+tests
+infra
+build
+docs
+scripts
+*.md
