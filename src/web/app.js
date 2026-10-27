@@ -758,6 +758,13 @@ function initMap() {
     mapState.tiles[t].addTo(map);
   });
   $("#play").addEventListener("click", () => (mapState.playing ? pause() : play()));
+  mapState.camera = loadPrefs().camera !== false;
+  $("#camera").setAttribute("aria-pressed", String(mapState.camera));
+  $("#camera").addEventListener("click", () => {
+    mapState.camera = !mapState.camera;
+    $("#camera").setAttribute("aria-pressed", String(mapState.camera));
+    savePrefs({ camera: mapState.camera });
+  });
   mapState.speed = 5;
   $("#speed").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-speed]");
@@ -811,7 +818,7 @@ function makeRun(payload, data, vaccinates) {
   const lastBite = bitten.reduce((m, p) => Math.max(m, p[2]), 0);
   return {
     bitten, vaccinated, latent: cfg.latent_mean, sick, label: payload.label, counts: payload.counts, closed: payload.closed,
-    events: buildEvents(bitten, data, payload, vaccinates),
+    events: buildEvents(bitten, data, payload, vaccinates, vaccinated),
     lastDay: Math.min(cfg.days, Math.ceil(lastBite + sick + 2)),
     peak: Math.max(1, ...(payload.counts || []).map((c) => c[2])),
   };
@@ -836,7 +843,7 @@ function nearestBarrio(lat, lon, barrios) {
 }
 
 // Headlines of the run, generated from what actually happened in it.
-function buildEvents(bitten, data, payload, vaccinates) {
+function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
   const label = payload.label;
   const cfg = data.config;
   const barrios = data.map.barrios;
@@ -858,7 +865,11 @@ function buildEvents(bitten, data, payload, vaccinates) {
     }
   }
   if (vaccinates && cfg.doses_per_day > 0) {
-    events.push({ day: cfg.vaccine_start_day, text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). Se aplica «${label}».` });
+    // The first dose of the run, on the map where it was given.
+    const first = vaccinated.reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
+    events.push({ day: first ? first[2] : cfg.vaccine_start_day,
+      text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). Se aplica «${label}».`,
+      bubble: first ? { where: { lat: first[0], lon: first[1] }, title: "Primera vacuna", color: "#3fd0ff" } : undefined });
   }
   const closedSeries = Array.isArray(payload.closed) ? payload.closed : [];
   const places = ["el mercado central", "los colegios"];
@@ -883,15 +894,63 @@ function buildEvents(bitten, data, payload, vaccinates) {
   return events.sort((a, b) => a.day - b.day);
 }
 
-function play() {
+// ---------- automatic camera: fly to the moments that matter, then back to the city ----------
+
+const cameraOn = () => mapState.camera && !motionOff();
+const cityZoom = () => (mapState.leaflet.getSize().x < 600 ? 12 : 13);
+
+// Where the camera stops: patient zero, the first dose and the first barrios the plague reaches.
+function cameraShots(run) {
+  const shots = [];
+  let reached = 0;
+  for (const ev of run.events) {
+    const where = ev.bubble?.where;
+    if (!where) continue;
+    const isArrival = ev.bubble.title.startsWith("Llega a");
+    if (isArrival && (reached += 1) > 2) continue;
+    shots.push({ day: ev.day, lat: where.lat, lon: where.lon, zoom: isArrival ? 14 : 15 });
+  }
+  return shots.sort((a, b) => a.day - b.day);
+}
+
+function flyAndWait(target, zoom, seconds) {
+  const map = mapState.leaflet;
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(timer); map.off("moveend", done); resolve(); };
+    const timer = setTimeout(done, seconds * 1000 + 400);
+    map.once("moveend", done);
+    map.flyTo(target, zoom, { duration: seconds });
+  });
+}
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function cinematic(shot, token) {
+  mapState.inShot = true;
+  mapState.day = Math.max(mapState.day, shot.day + 0.4);  // the headline bubble pops up
+  drawPeople();
+  await flyAndWait([shot.lat, shot.lon], shot.zoom, 1.3);
+  const until = performance.now() + 1700;
+  while (performance.now() < until && token === mapState.playToken) { drawPeople(); await wait(60); }
+  if (token === mapState.playToken) await flyAndWait(CITY, cityZoom(), 1.1);
+  mapState.inShot = false;
+  if (token === mapState.playToken) play(true);
+}
+
+function play(resume = false) {
   if (!mapState.run) return;
-  if (mapState.day >= mapState.lastDay) mapState.day = 0;
+  if (!resume) {
+    if (mapState.day >= mapState.lastDay) mapState.day = 0;
+    // Shots still ahead of the playhead will be visited.
+    mapState.shots = cameraShots(mapState.run).filter((s) => s.day >= Math.floor(mapState.day));
+  }
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm")) {
     mapState.day = mapState.lastDay;
     drawPeople();
     return;
   }
   mapState.playing = true;
+  const token = (mapState.playToken = (mapState.playToken || 0) + 1);
   clearTimeout(mapState.idle);
   $("#play").textContent = "❚❚";
   $("#play").setAttribute("aria-label", "Pausa");
@@ -900,6 +959,8 @@ function play() {
     const speed = mapState.speed; // days per second
     mapState.day = Math.min(mapState.lastDay, mapState.day + ((now - last) / 1000) * speed);
     last = now;
+    const shot = cameraOn() && mapState.shots?.[0]?.day <= mapState.day ? mapState.shots.shift() : null;
+    if (shot) return cinematic(shot, token);
     drawPeople();
     if (mapState.day >= mapState.lastDay) {
       pause();
@@ -914,6 +975,7 @@ function play() {
 
 function pause() {
   mapState.playing = false;
+  mapState.playToken = (mapState.playToken || 0) + 1;  // cancels a camera shot in progress
   cancelAnimationFrame(mapState.raf);
   $("#play").textContent = "▶";
   $("#play").setAttribute("aria-label", "Reproducir");
@@ -1234,7 +1296,7 @@ function drawBubbles(ctx, map, day, events) {
     ctx.translate(pt.x, pt.y);
     ctx.scale(pop, pop);
     ctx.translate(-pt.x, -pt.y);
-    ctx.fillStyle = "#ff3b3b";
+    ctx.fillStyle = ev.bubble.color || "#ff3b3b";
     ctx.beginPath(); ctx.moveTo(pt.x - 4, y + 10); ctx.lineTo(pt.x, pt.y - 8); ctx.lineTo(pt.x + 4, y + 10); ctx.fill();
     ctx.fillRect(x, y - 11, w, 22);
     ctx.fillStyle = "#1a0b10";
