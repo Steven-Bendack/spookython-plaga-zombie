@@ -1,7 +1,7 @@
 """Named scenarios: real diseases and fictional zombies, with their sources.
 
 Every number is either sourced or marked as a fiction assumption. The model is
-a daily SEIR, so anything faster than a day (World War Z's 12-second turn)
+a daily SEIR, so anything faster than a day (a conversion of seconds)
 becomes the minimum of one day: that limitation is stated in the UI.
 """
 from __future__ import annotations
@@ -26,27 +26,27 @@ SCENARIOS = {
         "source": "R0 mediano de la pandemia de 2009: 1,46 (Biggerstaff et al. 2014). "
                   "Incubación de influenza A ≈ 1,4 días (Lessler et al. 2009).",
     },
-    "classic_zombie": {
-        "label": "Zombi clásico (cine)",
+    "slow_zombie": {
+        "label": "Zombi lento",
         "kind": "fiction",
         "changes": {"r0": 1.25, "latent_mean": 0.5, "infectious_mean": 21.0},
-        "source": "Alemi et al. 2015 (Physical Review E) ajustaron películas de zombis: α = 0,8, "
-                  "así que cada zombi muerde a 1/α = 1,25 personas antes de ser destruido; "
-                  "conversión con vida media de 30 minutos. Los zombis no se curan: duran hasta que los destruyen.",
+        "source": "Inspirado en el zombi clásico del cine. Alemi et al. 2015 (Physical Review E) ajustaron "
+                  "películas de zombis: α = 0,8, así que cada zombi muerde a 1/α = 1,25 personas antes de "
+                  "ser destruido, y la conversión tiene vida media de 30 minutos. No se curan: duran hasta que los destruyen.",
     },
-    "walking_dead": {
-        "label": "The Walking Dead",
+    "walkers": {
+        "label": "Caminantes",
         "kind": "fiction",
         "changes": {"r0": 1.25, "latent_mean": 1.5, "infectious_mean": 21.0},
-        "source": "Caminantes lentos como el zombi clásico (R0 1,25, Alemi et al. 2015). En la serie, "
-                  "el mordido tiene fiebre, muere en uno o dos días y se levanta: latencia ≈ 1,5 días (supuesto de ficción).",
+        "source": "Inspirado en las historias de caminantes: zombis lentos (R0 1,25, como el zombi clásico) "
+                  "y un mordido que tiene fiebre, muere en uno o dos días y se levanta (latencia ≈ 1,5 días, supuesto de ficción).",
     },
-    "world_war_z": {
-        "label": "Guerra Mundial Z",
+    "fast_horde": {
+        "label": "Horda rápida",
         "kind": "fiction",
         "changes": {"r0": 6.0, "latent_mean": 0.5, "infectious_mean": 21.0},
-        "source": "En la película (2013) la conversión tarda 12 segundos y los zombis corren en hordas. "
-                  "No hay estimación publicada: suponemos R0 = 6 (supuesto de ficción). Un modelo diario no "
-                  "baja de 1 día de latencia, así que aquí la plaga es más lenta que en la película.",
+        "source": "Inspirado en las hordas rápidas del cine: la conversión tarda segundos y los zombis corren en grupo. "
+                  "No hay estimación publicada: R0 = 6 es un supuesto de ficción. Un modelo diario no baja de 1 día "
+                  "de latencia, así que aquí la plaga es más lenta que en la pantalla.",
     },
 }
