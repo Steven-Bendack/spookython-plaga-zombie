@@ -82,7 +82,9 @@ def map_payload(cfg: SimConfig, beta: float, best: dict) -> dict:
     for key, name in (("none", "none"), ("random", "random"), ("strategy", best["name"])):
         res = simulate_policy(city, cfg, beta, name, run_ids=[run])
         out[key] = {"label": LABELS[name], "bitten": points(res.bitten_day),
-                    "vaccinated": points(res.vaccinated_day)}
+                    "vaccinated": points(res.vaccinated_day),
+                    # S, E, I, R, V of this run, day by day (the progress bar)
+                    "counts": res.counts[0].tolist()}
     return out
 
 
