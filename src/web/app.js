@@ -546,7 +546,8 @@ function renderChallenge(d) {
     }),
   });
   if (d.player_wins) sound.bite();
-  $("#chResult").scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
+  // Watch the duel on the map; the scoreboard comes back when the replay ends.
+  enterSplit(d);
 }
 
 // ---------- mayor's report (DeepSeek writes it; the server falls back to a template) ----------
@@ -751,7 +752,7 @@ function initMap() {
   new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe(map.getContainer());
   getJSON("data/manta_streets.json").then((d) => { mapState.streets = projectStreets(d.lines); drawStreets(); }).catch(() => {});
 
-  segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; prepareRun(); drawPeople(); });
+  segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; exitSplit(); prepareRun(); drawPeople(); });
   segmented("#mapTiles", "tiles", (t) => {
     Object.values(mapState.tiles).forEach((l) => map.removeLayer(l));
     mapState.tiles[t].addTo(map);
@@ -766,10 +767,12 @@ function initMap() {
     if (!mapState.playing) play();
   });
   map.on("click", (e) => showBarrioCard(e.latlng));
+  initSplit();
   $("#daySlider").addEventListener("input", (e) => { pause(); mapState.day = +e.target.value; drawPeople(); });
 }
 
 function loadMapRun(data) {
+  leaveSplit();
   mapState.data = data;
   $("#mapRun").textContent = `corrida típica n.º ${data.map.run}`;
   mapState.day = 0;
@@ -794,22 +797,32 @@ function showBarrioLabels(barrios) {
 function prepareRun() {
   const data = mapState.data;
   if (!data) return;
+  setRun(makeRun(data.map[mapState.policy], data, mapState.policy !== "none"));
+}
+
+// A replayed run ready to draw: points in world coordinates plus its headlines.
+function makeRun(payload, data, vaccinates) {
   const cfg = data.config;
-  const run = data.map[mapState.policy];
   // [lat, lon, day, worldX, worldY]
   const toLL = (p) => [p[0] / 1e4, p[1] / 1e4, p[2], ...toWorld(p[0] / 1e4, p[1] / 1e4)];
-  const bitten = run.bitten.map(toLL);
-  const vaccinated = run.vaccinated.map(toLL);
+  const bitten = payload.bitten.map(toLL);
+  const vaccinated = payload.vaccinated.map(toLL);
   const sick = cfg.latent_mean + cfg.infectious_mean;
   const lastBite = bitten.reduce((m, p) => Math.max(m, p[2]), 0);
-  mapState.run = {
-    bitten, vaccinated, latent: cfg.latent_mean, sick, label: run.label, counts: run.counts, closed: run.closed,
-    events: buildEvents(bitten, data, run.label),
+  return {
+    bitten, vaccinated, latent: cfg.latent_mean, sick, label: payload.label, counts: payload.counts, closed: payload.closed,
+    events: buildEvents(bitten, data, payload, vaccinates),
+    lastDay: Math.min(cfg.days, Math.ceil(lastBite + sick + 2)),
+    peak: Math.max(1, ...(payload.counts || []).map((c) => c[2])),
   };
-  mapState.lastDay = Math.min(cfg.days, Math.ceil(lastBite + sick + 2));
-  mapState.peakZombies = Math.max(1, ...(run.counts || []).map((c) => c[2]));
-  $("#daySlider").max = mapState.lastDay;
-  mapState.day = Math.min(mapState.day, mapState.lastDay);
+}
+
+function setRun(run, lastDay = run.lastDay, peak = run.peak) {
+  mapState.run = run;
+  mapState.lastDay = lastDay;
+  mapState.peakZombies = peak;
+  $("#daySlider").max = lastDay;
+  mapState.day = Math.min(mapState.day, lastDay);
 }
 
 function nearestBarrio(lat, lon, barrios) {
@@ -823,7 +836,8 @@ function nearestBarrio(lat, lon, barrios) {
 }
 
 // Headlines of the run, generated from what actually happened in it.
-function buildEvents(bitten, data, label) {
+function buildEvents(bitten, data, payload, vaccinates) {
+  const label = payload.label;
   const cfg = data.config;
   const barrios = data.map.barrios;
   const n = cfg.population;
@@ -843,10 +857,10 @@ function buildEvents(bitten, data, label) {
       events.push({ day: p[2], text: `Día ${p[2]}: la plaga llega a ${b}.`, bubble: { where: at(b), title: `Llega a ${b}` } });
     }
   }
-  if (mapState.policy !== "none" && cfg.doses_per_day > 0) {
-    events.push({ day: cfg.vaccine_start_day, text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). El comité aplica «${label}».` });
+  if (vaccinates && cfg.doses_per_day > 0) {
+    events.push({ day: cfg.vaccine_start_day, text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). Se aplica «${label}».` });
   }
-  const closedSeries = Array.isArray(data.map[mapState.policy].closed) ? data.map[mapState.policy].closed : [];
+  const closedSeries = Array.isArray(payload.closed) ? payload.closed : [];
   const places = ["el mercado central", "los colegios"];
   for (let d = 1; d < closedSeries.length; d += 1) {
     for (const k of [0, 1]) {
@@ -887,7 +901,11 @@ function play() {
     mapState.day = Math.min(mapState.lastDay, mapState.day + ((now - last) / 1000) * speed);
     last = now;
     drawPeople();
-    if (mapState.day >= mapState.lastDay) return pause();
+    if (mapState.day >= mapState.lastDay) {
+      pause();
+      if (mapState.split) setTimeout(() => { if (mapState.split) openPanel("challenge"); }, 1200);
+      return;
+    }
     mapState.raf = requestAnimationFrame(step);
   };
   cancelAnimationFrame(mapState.raf);
@@ -986,6 +1004,63 @@ function drawPeople() {
   const now = performance.now() / 1000;
   const zoom = map.getZoom();
   const r = Math.max(1.4, Math.min(5, 1.4 + (zoom - 11) * 0.8));
+  const split = mapState.split;
+  let stats;
+  if (split) {
+    // The duel: the player's run left of the divider, the committee's on the right.
+    const size = map.getSize();
+    const cut = Math.round(size.x * split.x);
+    const side = (one, x0, x1) => {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x0, 0, x1 - x0, size.y); ctx.clip();
+      const out = drawRun(ctx, one, T, day, r, now);
+      drawBubbles(ctx, map, day, one.events);
+      ctx.restore();
+      return out;
+    };
+    stats = side(split.left, 0, cut);
+    split.leftStats = stats;
+    split.rightStats = side(split.right, cut, size.x);
+    drawBarrioNames(ctx, map);
+    updateSplitBar(day);
+  } else {
+    stats = drawRun(ctx, run, T, day, r, now);
+    drawBarrioNames(ctx, map);
+    drawBubbles(ctx, map, day, run.events);
+  }
+  const { zombies, bitten: bittenSoFar, vax } = stats;
+
+  const n = (split ? split.data : mapState.data).config.population;
+  $("#barZombies").style.width = `${Math.min(100, (100 * zombies) / mapState.peakZombies)}%`;
+  $("#barBitten").style.width = `${(100 * bittenSoFar) / n}%`;
+  $("#barVax").style.width = `${(100 * vax) / n}%`;
+  $("#hudDay").textContent = Math.floor(day);
+  $("#hudZombies").textContent = fmt(zombies);
+  $("#hudBitten").textContent = fmt(bittenSoFar);
+  $("#hudVax").textContent = fmt(vax);
+  $("#hudCity").textContent = pct(bittenSoFar / n);
+  $("#daySlider").value = Math.floor(day);
+  paintRange($("#daySlider"));
+  drawProgress(day);
+  const closedToday = (run.closed && run.closed[Math.max(0, Math.min(Math.floor(day) || 0, run.closed.length - 1))]) || [0, 0];
+  const badge = $("#hudClosed");
+  const names = [closedToday[0] ? "Mercado cerrado" : "", closedToday[1] ? "Colegios cerrados" : ""].filter(Boolean);
+  badge.hidden = names.length === 0;
+  badge.textContent = names.join(" · ");
+  sound.setTension((zombies / n) * 10);
+  const ev = split ? null : run.events.filter((e) => e.day <= day).at(-1);
+  const ticker = $("#ticker");
+  if (ev && ticker.textContent !== ev.text) {
+    ticker.textContent = ev.text;
+    ticker.classList.remove("is-new");
+    void ticker.offsetWidth;
+    ticker.classList.add("is-new");
+    if (mapState.playing) sound.bite();
+  }
+}
+
+// One run's people on the canvas; returns today's counts.
+function drawRun(ctx, run, T, day, r, now) {
   const outline = "rgba(10, 6, 12, 0.9)";
   let zombies = 0;
   let bittenSoFar = 0;
@@ -1043,36 +1118,97 @@ function drawPeople() {
     ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.3 * pulse, 0, Math.PI * 2); ctx.fill();
     dot(pt, r * 1.05, "#ff3b3b");
   }
-  drawBarrioNames(ctx, map);
-  drawBubbles(ctx, map, day, run.events);
+  return { zombies, bitten: bittenSoFar, vax };
+}
 
-  const n = mapState.data.config.population;
-  $("#barZombies").style.width = `${Math.min(100, (100 * zombies) / mapState.peakZombies)}%`;
-  $("#barBitten").style.width = `${(100 * bittenSoFar) / n}%`;
-  $("#barVax").style.width = `${(100 * vax) / n}%`;
-  $("#hudDay").textContent = Math.floor(day);
-  $("#hudZombies").textContent = fmt(zombies);
-  $("#hudBitten").textContent = fmt(bittenSoFar);
-  $("#hudVax").textContent = fmt(vax);
-  $("#hudCity").textContent = pct(bittenSoFar / n);
-  $("#daySlider").value = Math.floor(day);
-  paintRange($("#daySlider"));
-  drawProgress(day);
-  const closedToday = (run.closed && run.closed[Math.max(0, Math.min(Math.floor(day) || 0, run.closed.length - 1))]) || [0, 0];
-  const badge = $("#hudClosed");
-  const names = [closedToday[0] ? "Mercado cerrado" : "", closedToday[1] ? "Colegios cerrados" : ""].filter(Boolean);
-  badge.hidden = names.length === 0;
-  badge.textContent = names.join(" · ");
-  sound.setTension((zombies / n) * 10);
-  const ev = run.events.filter((e) => e.day <= day).at(-1);
-  const ticker = $("#ticker");
-  if (ev && ticker.textContent !== ev.text) {
-    ticker.textContent = ev.text;
-    ticker.classList.remove("is-new");
-    void ticker.offsetWidth;
-    ticker.classList.add("is-new");
-    if (mapState.playing) sound.bite();
+// ---------- the duel: the player's plan and the committee's on one map ----------
+
+function enterSplit(d) {
+  const data = { config: d.config, manta_scale: d.manta_scale, map: d.map };
+  const left = makeRun(d.map.player, data, true);
+  const right = makeRun(d.map.committee, data, true);
+  mapState.split = { x: mapState.split?.x ?? 0.5, left, right, data, shownDay: -1 };
+  setRun(left, Math.max(left.lastDay, right.lastDay), Math.max(left.peak, right.peak));
+  $("#splitYouPlan").textContent = d.player.label;
+  $("#splitThemPlan").textContent = d.committee.label;
+  $("#mapRun").textContent = `duelo · corrida típica n.º ${d.map.run}`;
+  $("#split").hidden = false;
+  placeSplitLine();
+  $("#play").disabled = false;
+  $("#daySlider").disabled = false;
+  closePanel("challenge");
+  mapState.day = 0;
+  play();
+}
+
+// Back to the main map: the last simulation if there is one, otherwise an empty city.
+function exitSplit() {
+  if (!leaveSplit()) return;
+  if (mapState.data) {
+    prepareRun();
+    $("#mapRun").textContent = `corrida típica n.º ${mapState.data.map.run}`;
+  } else {
+    pause();
+    mapState.run = null;
+    $("#mapRun").textContent = "sin simular";
+    $("#play").disabled = true;
+    $("#daySlider").disabled = true;
   }
+  drawPeople();
+}
+
+function leaveSplit() {
+  if (!mapState.split) return false;
+  mapState.split = null;
+  $("#split").hidden = true;
+  return true;
+}
+
+function placeSplitLine() {
+  $("#splitLine").style.left = `${mapState.split.x * 100}%`;
+  $("#splitLine").setAttribute("aria-valuenow", String(Math.round(mapState.split.x * 100)));
+}
+
+function updateSplitBar(day) {
+  const { leftStats: you, rightStats: them } = mapState.split;
+  $("#splitYouZ").textContent = fmt(you.zombies);
+  $("#splitYouB").textContent = fmt(you.bitten);
+  $("#splitThemZ").textContent = fmt(them.zombies);
+  $("#splitThemB").textContent = fmt(them.bitten);
+  $("#splitDay").textContent = `Día ${Math.floor(day)}`;
+  const today = Math.floor(day);
+  if (today === mapState.split.shownDay) return;
+  mapState.split.shownDay = today;
+  const gap = you.bitten - them.bitten;
+  $("#ticker").textContent = gap === 0
+    ? `Día ${today}: empate, ${fmt(you.bitten)} mordidos en cada lado.`
+    : `Día ${today}: ${gap > 0 ? "el comité" : "tu plan"} lleva ${fmt(Math.abs(gap))} mordidos menos (tú ${fmt(you.bitten)} · comité ${fmt(them.bitten)}).`;
+}
+
+function initSplit() {
+  const line = $("#splitLine");
+  const moveTo = (clientX) => {
+    const box = $("#map").getBoundingClientRect();
+    mapState.split.x = Math.min(0.9, Math.max(0.1, (clientX - box.left) / box.width));
+    placeSplitLine();
+    if (!mapState.playing) drawPeople();
+  };
+  line.addEventListener("pointerdown", (e) => {
+    line.setPointerCapture(e.pointerId);
+    const move = (ev) => moveTo(ev.clientX);
+    const up = () => { line.removeEventListener("pointermove", move); line.removeEventListener("pointerup", up); };
+    line.addEventListener("pointermove", move);
+    line.addEventListener("pointerup", up);
+  });
+  line.addEventListener("keydown", (e) => {
+    const step = { ArrowLeft: -0.05, ArrowRight: 0.05 }[e.key];
+    if (!step || !mapState.split) return;
+    e.preventDefault();
+    const box = $("#map").getBoundingClientRect();
+    moveTo(box.left + (mapState.split.x + step) * box.width);
+  });
+  $("#splitExit").addEventListener("click", exitSplit);
+  $("#splitScore").addEventListener("click", () => openPanel("challenge"));
 }
 
 // Event bubbles: each headline pops up over its barrio for a few days.
