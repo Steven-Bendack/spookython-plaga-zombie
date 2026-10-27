@@ -2,10 +2,10 @@
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
-  none: "#9d93ab", random: "#b58cff", strategy: "#7cff4f", zombie: "#ff3b3b", tie: "#4a3c5c",
-  bitten: "#ffc94d", gone: "#6f6480", vax: "#38e8ff", pumpkin: "#ff7518", ink: "#f3ecfa", grid: "#2a1d3a",
+  none: "#8f8580", random: "#c9a0ff", strategy: "#a8d672", zombie: "#ff3b3b", tie: "#4a3f48",
+  bitten: "#ffc94d", gone: "#6f6480", vax: "#38e8ff", pumpkin: "#ff7518", ink: "#efe6d6", grid: "#2a2229",
 };
-const STRATEGY_COLORS = { ring_hubs: "#7cff4f", ring: "#38e8ff", degree: "#ffb347", acquaintance: "#b58cff" };
+const STRATEGY_COLORS = { ring_hubs: "#a8d672", ring: "#38e8ff", degree: "#ffb347", acquaintance: "#c9a0ff" };
 const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vaccine_start_day",
   "detection_prob", "detection_delay", "initial_cases", "runs", "strategy", "seed",
   "latent_mean", "infectious_mean", "days"];
@@ -25,7 +25,7 @@ const pct = (x) => `${Math.round(x * 100)} %`;
 const dec = (x, d = 1) => x.toFixed(d).replace(".", ",");
 
 if (window.Chart) {
-  Chart.defaults.color = "#b4a4c6";
+  Chart.defaults.color = "#a89c95";
   Chart.defaults.borderColor = COLORS.grid;
   Chart.defaults.font.family = "IBM Plex Sans";
 }
@@ -182,7 +182,7 @@ function labelOf(name) {
 async function runSimulation() {
   const btn = $("#run");
   btn.disabled = true;
-  btn.textContent = "Invocando a los muertos…";
+  btn.textContent = "Corriendo las simulaciones…";
   $("#results").classList.add("is-loading");
   const started = performance.now();
   try {
@@ -299,6 +299,7 @@ async function copyLink() {
 
 const mapState = {
   leaflet: null, tiles: {}, canvas: null, ctx: null, pin: null, labels: [],
+  streetCanvas: null, streetCtx: null, streets: null,
   data: null, run: null, policy: "none", day: 0, lastDay: 0, playing: false, raf: 0, flown: false,
 };
 
@@ -319,15 +320,23 @@ function initMap() {
   mapState.pin = L.marker(MANTA, { icon: L.divIcon({ className: "", html: '<div class="manta-pin"></div>', iconSize: [18, 18] }) })
     .addTo(map).bindTooltip("Manta", { permanent: true, direction: "right", className: "barrio-label" });
 
-  // Canvas over the map for thousands of people (redrawn on every move).
-  const canvas = document.createElement("canvas");
-  Object.assign(canvas.style, { position: "absolute", inset: "0", zIndex: 450, pointerEvents: "none" });
-  map.getContainer().appendChild(canvas);
-  mapState.canvas = canvas;
-  mapState.ctx = canvas.getContext("2d");
+  // Two canvases over the map: Manta's streets (redrawn when the map moves)
+  // and the people (redrawn every animation frame).
+  const layer = (z) => {
+    const c = document.createElement("canvas");
+    Object.assign(c.style, { position: "absolute", inset: "0", zIndex: z, pointerEvents: "none" });
+    map.getContainer().appendChild(c);
+    return c;
+  };
+  mapState.streetCanvas = layer(440);
+  mapState.streetCtx = mapState.streetCanvas.getContext("2d");
+  mapState.canvas = layer(450);
+  mapState.ctx = mapState.canvas.getContext("2d");
   mapState.leaflet = map;
-  map.on("move zoom resize", drawPeople);
-  new ResizeObserver(() => { map.invalidateSize(); drawPeople(); }).observe(map.getContainer());
+  const redraw = () => { drawStreets(); drawPeople(); };
+  map.on("move zoom resize", redraw);
+  new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe(map.getContainer());
+  getJSON("data/manta_streets.json").then((d) => { mapState.streets = d.lines; drawStreets(); }).catch(() => {});
 
   segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; prepareRun(); drawPeople(); });
   segmented("#mapcard .segmented--small", "tiles", (t) => {
@@ -351,7 +360,7 @@ function loadMapRun(data) {
     mapState.flown = true;
     map.removeLayer(mapState.pin);
     const zoom = map.getSize().x < 600 ? 12 : 13;
-    map.flyTo([-0.968, -80.735], zoom, { duration: 3.2 });
+    map.flyTo([-0.975, -80.735], zoom, { duration: 3.2 });
     map.once("moveend", () => {
       showBarrioLabels(data.map.barrios);
       play();
@@ -441,6 +450,7 @@ function play() {
     return;
   }
   mapState.playing = true;
+  clearTimeout(mapState.idle);
   $("#play").textContent = "❚❚ Pausa";
   let last = performance.now();
   const step = (now) => {
@@ -459,12 +469,19 @@ function pause() {
   mapState.playing = false;
   cancelAnimationFrame(mapState.raf);
   $("#play").textContent = "▶ Reproducir";
+  idle();
 }
 
-function drawPeople() {
-  const { canvas, ctx, leaflet: map, run } = mapState;
-  if (!canvas || !map) return;
-  const size = map.getSize();
+// While paused, zombies keep breathing (a few frames per second is enough).
+function idle() {
+  clearTimeout(mapState.idle);
+  if (mapState.playing || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  drawPeople();
+  mapState.idle = setTimeout(idle, 120);
+}
+
+function fitCanvas(canvas, ctx) {
+  const size = mapState.leaflet.getSize();
   const ratio = window.devicePixelRatio || 1;
   if (canvas.width !== size.x * ratio || canvas.height !== size.y * ratio) {
     canvas.width = size.x * ratio;
@@ -474,42 +491,89 @@ function drawPeople() {
   }
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, size.x, size.y);
+  return size;
+}
+
+// Manta's real streets (OpenStreetMap), only once we are close enough to see them.
+function drawStreets() {
+  const { streetCanvas: canvas, streetCtx: ctx, leaflet: map, streets } = mapState;
+  if (!canvas || !map) return;
+  fitCanvas(canvas, ctx);
+  if (!streets || map.getZoom() < 11) return;
+  const bounds = map.getBounds().pad(0.1);
+  for (const kind of ["street", "main"]) {
+    ctx.strokeStyle = kind === "main" ? "rgba(232, 210, 170, 0.55)" : "rgba(232, 210, 170, 0.22)";
+    ctx.lineWidth = kind === "main" ? 1.6 : 0.8;
+    ctx.beginPath();
+    for (const line of streets) {
+      if (line.k !== kind) continue;
+      const first = line.p[0];
+      if (!bounds.contains(first) && !bounds.contains(line.p[line.p.length - 1])) continue;
+      line.p.forEach((ll, i) => {
+        const pt = map.latLngToContainerPoint(ll);
+        if (i) ctx.lineTo(pt.x, pt.y); else ctx.moveTo(pt.x, pt.y);
+      });
+    }
+    ctx.stroke();
+  }
+}
+
+function drawPeople() {
+  const { canvas, ctx, leaflet: map, run } = mapState;
+  if (!canvas || !map) return;
+  fitCanvas(canvas, ctx);
   if (!run) return;
 
   const day = mapState.day;
-  const r = Math.max(1.2, (map.getZoom() - 10) * 0.9);
+  const now = performance.now() / 1000;
+  const r = Math.max(1.3, (map.getZoom() - 10) * 0.85);
   let zombies = 0;
   let bittenSoFar = 0;
   let vax = 0;
 
-  ctx.fillStyle = COLORS.vax;
+  // Vaccinated: small cyan squares that settle in.
   for (const p of run.vaccinated) {
-    if (p[2] > day) continue;
+    const age = day - p[2];
+    if (age < 0) continue;
     vax += 1;
     const pt = map.latLngToContainerPoint([p[0], p[1]]);
+    ctx.fillStyle = `rgba(56, 232, 255, ${Math.min(1, 0.35 + age)})`;
     ctx.fillRect(pt.x - r * 0.6, pt.y - r * 0.6, r * 1.2, r * 1.2);
   }
-  const glowing = [];
-  for (const p of run.bitten) {
+  const zombiesNow = [];
+  const ripples = [];
+  for (let i = 0; i < run.bitten.length; i += 1) {
+    const p = run.bitten[i];
     const age = day - p[2];
     if (age < 0) continue;
     bittenSoFar += 1;
     const pt = map.latLngToContainerPoint([p[0], p[1]]);
+    if (age < 1.5) ripples.push([pt, age]);
     if (age < run.latent) {
-      ctx.fillStyle = COLORS.bitten;
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffc94d";
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 0.75, 0, Math.PI * 2); ctx.fill();
     } else if (age < run.sick) {
       zombies += 1;
-      glowing.push(pt);
+      zombiesNow.push([pt, i]);
     } else {
-      ctx.fillStyle = "rgba(111, 100, 128, 0.55)";
-      ctx.fillRect(pt.x - r * 0.5, pt.y - r * 0.5, r, r);
+      // Exorcised: fades from dull red to ash over a week.
+      const fade = Math.min(1, (age - run.sick) / 7);
+      ctx.fillStyle = `rgba(${Math.round(150 - 40 * fade)}, ${Math.round(70 + 30 * fade)}, ${Math.round(80 + 48 * fade)}, ${0.7 - 0.35 * fade})`;
+      ctx.fillRect(pt.x - r * 0.45, pt.y - r * 0.45, r * 0.9, r * 0.9);
     }
   }
-  for (const pt of glowing) {
-    ctx.fillStyle = "rgba(255, 59, 59, 0.22)";
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = COLORS.zombie;
+  // A ring spreads out where someone was just bitten.
+  ctx.lineWidth = 1.2;
+  for (const [pt, age] of ripples) {
+    ctx.strokeStyle = `rgba(255, 201, 77, ${0.8 * (1 - age / 1.5)})`;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * (1.2 + age * 5), 0, Math.PI * 2); ctx.stroke();
+  }
+  // Zombies breathe.
+  for (const [pt, i] of zombiesNow) {
+    const pulse = 1 + 0.35 * Math.sin(now * 3 + i);
+    ctx.fillStyle = "rgba(255, 59, 59, 0.18)";
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.4 * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ff3b3b";
     ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2); ctx.fill();
   }
 
