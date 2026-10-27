@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0e2a33"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #0e2a33; stroke-width: 1.5; rx: 10; }
+      .pub { fill: #e5f1f0; stroke: #0f7c7a; stroke-width: 2; }
+      .zone { fill: none; stroke: #8a9499; stroke-dasharray: 6 5; stroke-width: 1.2; }
+      .t { font-size: 15px; font-weight: 600; fill: #0e2a33; }
+      .s { font-size: 12px; fill: #4b636b; }
+      .z { font-size: 12px; font-weight: 600; fill: #4b636b; letter-spacing: .08em; }
+      .e { font-size: 11.5px; fill: #0e2a33; }
+      .line { stroke: #0e2a33; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="700" fill="#eef2f0"/>
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#0e2a33">La Plaga Zombie · arquitectura en AWS (us-east-1)</text>
+  <text x="40" y="68" class="s">Verde = público en Internet. Todo lo demás es privado y se accede con roles IAM de mínimo privilegio.</text>
+
+  <!-- user -->
+  <rect x="40" y="290" width="140" height="70" class="box"/>
+  <text x="110" y="320" text-anchor="middle" class="t">Jurado / alcalde</text>
+  <text x="110" y="340" text-anchor="middle" class="s">navegador</text>
+
+  <!-- CloudFront -->
+  <rect x="240" y="280" width="170" height="90" rx="10" class="pub"/>
+  <text x="325" y="315" text-anchor="middle" class="t">CloudFront</text>
+  <text x="325" y="335" text-anchor="middle" class="s">única URL pública</text>
+  <text x="325" y="352" text-anchor="middle" class="s">HTTPS</text>
+
+  <!-- AWS zone -->
+  <rect x="460" y="95" width="700" height="570" rx="14" class="zone"/>
+  <text x="480" y="120" class="z">CUENTA AWS · PRIVADO</text>
+
+  <!-- S3 web -->
+  <rect x="490" y="140" width="190" height="80" class="box"/>
+  <text x="585" y="172" text-anchor="middle" class="t">S3 · web</text>
+  <text x="585" y="192" text-anchor="middle" class="s">HTML, JS, mapa y jurado</text>
+  <text x="585" y="208" text-anchor="middle" class="s">solo CloudFront (OAC)</text>
+
+  <!-- HTTP API -->
+  <rect x="490" y="290" width="190" height="80" class="box"/>
+  <text x="585" y="322" text-anchor="middle" class="t">API Gateway</text>
+  <text x="585" y="342" text-anchor="middle" class="s">HTTP API · /api/*</text>
+  <text x="585" y="358" text-anchor="middle" class="s">throttling 5 req/s</text>
+
+  <!-- API Lambda -->
+  <rect x="740" y="290" width="180" height="80" class="box"/>
+  <text x="830" y="322" text-anchor="middle" class="t">Lambda · api</text>
+  <text x="830" y="342" text-anchor="middle" class="s">torneo, límites,</text>
+  <text x="830" y="358" text-anchor="middle" class="s">reparte el trabajo</text>
+
+  <!-- Worker -->
+  <rect x="975" y="275" width="160" height="110" class="box"/>
+  <rect x="983" y="283" width="160" height="110" class="box" opacity=".5"/>
+  <rect x="975" y="275" width="160" height="110" class="box"/>
+  <text x="1055" y="312" text-anchor="middle" class="t">Lambda · worker</text>
+  <text x="1055" y="332" text-anchor="middle" class="s">motor SEIR (NumPy)</text>
+  <text x="1055" y="348" text-anchor="middle" class="s">1 política ×</text>
+  <text x="1055" y="364" text-anchor="middle" class="s">un rango de corridas</text>
+
+  <!-- Step Functions -->
+  <rect x="740" y="455" width="230" height="95" class="box"/>
+  <text x="855" y="487" text-anchor="middle" class="t">Step Functions</text>
+  <text x="855" y="507" text-anchor="middle" class="s">plan → Distributed Map → agregar</text>
+  <text x="855" y="525" text-anchor="middle" class="s">Modo Jurado y mapa de decisión</text>
+
+  <!-- Results S3 -->
+  <rect x="490" y="465" width="190" height="80" class="box"/>
+  <text x="585" y="497" text-anchor="middle" class="t">S3 · resultados</text>
+  <text x="585" y="517" text-anchor="middle" class="s">trozos y reporte JSON</text>
+  <text x="585" y="533" text-anchor="middle" class="s">cifrado, expira a 30 días</text>
+
+  <!-- Monitoring -->
+  <rect x="990" y="460" width="150" height="85" class="box"/>
+  <text x="1065" y="490" text-anchor="middle" class="t">CloudWatch</text>
+  <text x="1065" y="508" text-anchor="middle" class="s">logs y X-Ray</text>
+  <text x="1065" y="526" text-anchor="middle" class="s">AWS Budgets: alerta</text>
+
+  <!-- edges -->
+  <path d="M180 325 H236" class="line"/>
+  <path d="M410 305 C450 305 450 180 486 180" class="line"/>
+  <text x="300" y="200" class="e">/ (archivos estáticos)</text>
+  <path d="M410 330 H486" class="line"/>
+  <text x="424" y="322" class="e">/api/*</text>
+  <path d="M680 330 H736" class="line"/>
+  <path d="M920 330 H971" class="line"/>
+  <text x="926" y="320" class="e">fan-out ×10</text>
+  <path d="M830 370 V451" class="line"/>
+  <text x="838" y="420" class="e">POST /api/jobs</text>
+  <path d="M970 470 C1000 440 1040 420 1050 389" class="line"/>
+  <text x="1010" y="440" class="e">cada ítem</text>
+  <path d="M740 505 H684" class="line"/>
+  <path d="M760 370 C740 420 700 440 684 478" class="line" stroke-dasharray="4 4"/>
+  <text x="600" y="425" class="e">lee el reporte</text>
+
+  <!-- local note -->
+  <rect x="40" y="560" width="390" height="100" rx="10" fill="#ffffff" stroke="#d3ddd9"/>
+  <text x="58" y="588" class="t">El motor no conoce AWS</text>
+  <text x="58" y="610" class="s">src/engine es Python puro. En local, src/server.py usa un</text>
+  <text x="58" y="628" class="s">pool de procesos; en AWS, los mismos trozos van a Lambdas.</text>
+  <text x="58" y="646" class="s">Misma semilla ⇒ mismo resultado en ambos.</text>
+</svg>
