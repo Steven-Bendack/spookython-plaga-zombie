@@ -34,6 +34,13 @@ class SimConfig:
     detection_prob: float = 0.6     # probability a Zombie is ever detected
     detection_delay: int = 2        # days from becoming Zombie to being detected
     strategy: str = "auto"          # "auto" = tournament, or a strategy name
+    # Closures and budget (Pro level). Costs are in "doses": 1 unit = 1 vaccine dose.
+    close_market: bool = False      # close the central market while the outbreak is visible
+    close_schools: bool = False     # close the schools while the outbreak is visible
+    closure_trigger: int = 15       # close when at least this many Zombies are detected and sick
+    budget: float = 0.0             # total budget in units; 0 = no limit
+    market_cost: float = 40.0       # units per day the market is closed
+    school_cost: float = 80.0       # units per day the schools are closed
 
     def validated(self) -> "SimConfig":
         """Clamp to safe limits so a public API cannot trigger huge runs."""
@@ -50,6 +57,10 @@ class SimConfig:
         c = replace(c, vaccine_start_day=_clamp_int(c.vaccine_start_day, 0, 365))
         c = replace(c, detection_prob=_clamp(c.detection_prob, 0.0, 1.0))
         c = replace(c, detection_delay=_clamp_int(c.detection_delay, 0, 30))
+        c = replace(c, closure_trigger=_clamp_int(c.closure_trigger, 1, 10_000))
+        c = replace(c, budget=_clamp(c.budget, 0.0, 1e7))
+        c = replace(c, market_cost=_clamp(c.market_cost, 0.0, 1e5))
+        c = replace(c, school_cost=_clamp(c.school_cost, 0.0, 1e5))
         return c
 
     def to_dict(self) -> dict:
@@ -63,7 +74,10 @@ class SimConfig:
         for name in known:
             if name in data and data[name] is not None:
                 default = getattr(defaults, name)
-                kwargs[name] = type(default)(data[name])
+                value = data[name]
+                if isinstance(default, bool) and isinstance(value, str):
+                    value = value.strip().lower() in ("1", "true", "on", "yes", "si", "sí")
+                kwargs[name] = type(default)(value)
         return cls(**kwargs).validated()
 
     def config_hash(self) -> str:

@@ -17,7 +17,7 @@ import numpy as np
 
 from .config import SimConfig
 from .disease import edge_log_survival, infection_pressure, sample_durations
-from .population import BARRIO_NAMES, City
+from .population import BARRIO_NAMES, MARKET, SCHOOL, City
 from .strategies import Visible, priority_keys
 
 S, E, I, R, V = 0, 1, 2, 3, 4
@@ -39,6 +39,9 @@ class PolicyResult:
     vaccinated_non_eligible: int  # doses given to visibly non-eligible people (must be 0)
     bitten_day: np.ndarray       # (n,) day each agent was bitten in the first simulated run, -1 = never
     vaccinated_day: np.ndarray   # (n,) day each agent got a dose in the first simulated run, -1 = never
+    spent: np.ndarray            # (runs,) budget units used (doses + closure days)
+    closed_days: np.ndarray      # (runs, 2) days the market / the schools were closed
+    closed_first: np.ndarray     # (days+1, 2) market / schools closed that day, first run (for the map)
 
 
 def run_stream(seed: int, run: int, purpose: int) -> np.random.Generator:
@@ -108,6 +111,20 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
     non_eligible_hits = 0
     luck = np.empty((runs, n), dtype=np.float32)
     vaccinates = policy != "none" and cfg.doses_per_day > 0
+    # Closures (Pro): every policy except "none" may close the market and/or the
+    # schools while enough Zombies are detected, paid from the same budget.
+    closable = np.array([cfg.close_market, cfg.close_schools]) & (policy != "none")
+    closure_cost = np.array([cfg.market_cost, cfg.school_cost])
+    closed = np.zeros((runs, 2), dtype=bool)
+    closed_days = np.zeros((runs, 2), dtype=np.int32)
+    closed_first = np.zeros((days + 1, 2), dtype=bool)
+    remaining = np.full(runs, cfg.budget if cfg.budget > 0 else np.inf)
+    spent = np.zeros(runs)
+    open_surv = log_surv
+    shut = {  # log-survival per edge with the closed layers switched off
+        (m, s): np.where(((city.layer == MARKET) & m) | ((city.layer == SCHOOL) & s), 0.0, log_surv)
+        for m in (False, True) for s in (False, True)
+    }
 
     for day in range(1, days + 1):
         zombie = state == I
@@ -121,9 +138,30 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         for row, g in enumerate(infection_rng):
             g.standard_exponential(dtype=np.float32, out=luck[row])
 
+        # 0. Closures for today, decided on what the committee saw yesterday.
+        if closable.any():
+            visible_sick = (detected & zombie).sum(axis=1)
+            want = closable[None, :] & (visible_sick >= cfg.closure_trigger)[:, None]
+            cost_today = (want * closure_cost).sum(axis=1)
+            affordable = cost_today <= remaining
+            closed = want & affordable[:, None]
+            spend = (closed * closure_cost).sum(axis=1)
+            remaining -= spend
+            spent += spend
+            closed_days += closed
+            closed_first[day] = closed[0]
+
         # 1. Transmission from today's Zombies: bitten if luck < pressure,
         #    which has probability 1 - exp(-pressure) (see disease.py).
-        newly_bitten = (state == S) & (luck < infection_pressure(city, log_surv, zombie))
+        if closed.any():
+            pressure = np.empty((runs, n))
+            for (m, s), surv in shut.items():
+                rows = np.flatnonzero((closed[:, 0] == m) & (closed[:, 1] == s))
+                if rows.size:
+                    pressure[rows] = infection_pressure(city, surv, zombie[rows])
+        else:
+            pressure = infection_pressure(city, open_surv, zombie)
+        newly_bitten = (state == S) & (luck < pressure)
         infected += newly_bitten.sum(axis=1)
         bitten_day[newly_bitten[0]] = day
 
@@ -149,6 +187,12 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
             seen = Visible(visible_zombie=detected & zombie, rng=policy_rng)
             keys = np.where(eligible, priority_keys(policy, city, seen), -np.inf)
             chosen = _top_k(keys, cfg.doses_per_day)
+            if cfg.budget > 0:
+                chosen = _cap_rows(chosen, keys, np.floor(remaining).astype(int))
+                remaining -= chosen.sum(axis=1)
+                spent += chosen.sum(axis=1)
+            else:
+                spent += chosen.sum(axis=1)
             non_eligible_hits += int((chosen & ~eligible).sum())
             vaccinated |= chosen
             susceptible_chosen = chosen & (state == S)
@@ -164,7 +208,18 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         doses_used=doses_by_day.sum(axis=1), doses_wasted=wasted,
         doses_by_day=doses_by_day, vaccinated_non_eligible=non_eligible_hits,
         bitten_day=bitten_day, vaccinated_day=vaccinated_day,
+        spent=spent, closed_days=closed_days, closed_first=closed_first,
     )
+
+
+def _cap_rows(chosen: np.ndarray, keys: np.ndarray, caps: np.ndarray) -> np.ndarray:
+    """Keep at most caps[row] chosen agents per row (the highest keys)."""
+    out = chosen.copy()
+    for row in np.flatnonzero(chosen.sum(axis=1) > caps):
+        idx = np.flatnonzero(chosen[row])
+        drop = idx[np.argsort(keys[row, idx])[: idx.size - max(caps[row], 0)]]
+        out[row, drop] = False
+    return out
 
 
 def _top_k(keys: np.ndarray, k: int) -> np.ndarray:

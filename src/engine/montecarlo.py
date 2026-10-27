@@ -38,6 +38,8 @@ def run_chunk(task: dict) -> dict:
         "doses_by_day": res.doses_by_day.tolist(),
         "counts": res.counts.tolist(),
         "vaccinated_non_eligible": res.vaccinated_non_eligible,
+        "spent": res.spent.tolist(),
+        "closed_days": res.closed_days.tolist(),
     }
 
 
@@ -75,6 +77,8 @@ class PolicyRuns:
     doses_by_day: np.ndarray   # (runs, days+1)
     counts: np.ndarray         # (runs, days+1, 5)
     vaccinated_non_eligible: int
+    spent: np.ndarray            # (runs,)
+    closed_days: np.ndarray      # (runs, 2) market / schools
 
 
 def run_policies(cfg: SimConfig, policies: Iterable[str], runner: Runner = serial_runner,
@@ -119,6 +123,8 @@ def merge_many(plan: list, results: list[dict]) -> list[tuple[float, dict[str, P
                 doses_by_day=np.concatenate([np.asarray(p["doses_by_day"]) for p in parts]),
                 counts=np.concatenate([np.asarray(p["counts"]) for p in parts]),
                 vaccinated_non_eligible=sum(p["vaccinated_non_eligible"] for p in parts),
+                spent=np.concatenate([p["spent"] for p in parts]),
+                closed_days=np.concatenate([np.asarray(p["closed_days"]).reshape(-1, 2) for p in parts]),
             )
         out.append((beta, merged))
     return out
@@ -150,6 +156,9 @@ def policy_summary(runs: PolicyRuns, population: int) -> dict:
         "doses_wasted": float(runs.doses_wasted.mean()),
         "wasted_share": float(runs.doses_wasted.sum() / max(runs.doses_used.sum(), 1)),
         "vaccinated_non_eligible": runs.vaccinated_non_eligible,
+        "spent": float(runs.spent.mean()),
+        "market_closed_days": float(runs.closed_days[:, 0].mean()),
+        "schools_closed_days": float(runs.closed_days[:, 1].mean()),
         "curves": {
             "S": _round(mean_curve[:, 0]), "E": _round(mean_curve[:, 1]),
             "I": _round(mean_curve[:, 2]), "R": _round(mean_curve[:, 3]),
@@ -201,6 +210,7 @@ def tournament(cfg: SimConfig, runner: Runner = serial_runner, candidates=CANDID
         })
     return {
         "beta": beta,
+        "runs": runs,
         "summaries": {p: policy_summary(r, cfg.population) for p, r in runs.items()},
         "random_vs_none": paired(none, rnd),
         "ranking": ranking,
