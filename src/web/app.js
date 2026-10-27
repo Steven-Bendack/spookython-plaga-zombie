@@ -614,7 +614,7 @@ function initMap() {
   // and the people (redrawn every animation frame).
   const layer = (z) => {
     const c = document.createElement("canvas");
-    Object.assign(c.style, { position: "absolute", inset: "0", zIndex: z, pointerEvents: "none" });
+    Object.assign(c.style, { position: "absolute", left: "0", top: "0", zIndex: z, pointerEvents: "none", transformOrigin: "0 0" });
     map.getContainer().appendChild(c);
     return c;
   };
@@ -624,9 +624,26 @@ function initMap() {
   mapState.ctx = mapState.canvas.getContext("2d");
   mapState.leaflet = map;
   const redraw = () => { drawStreets(); drawPeople(); };
+  // While Leaflet animates a zoom (wheel, buttons, double click) the tiles scale with CSS;
+  // the canvases scale the same way instead of sitting still until the zoom ends.
+  const canvases = [mapState.streetCanvas, mapState.canvas];
+  map.on("zoomanim", (e) => {
+    const scale = map.getZoomScale(e.zoom);
+    const half = map.getSize().divideBy(2);
+    const shift = map.project(e.center, e.zoom).subtract(map.project(map.getCenter(), e.zoom));
+    const offset = half.multiplyBy(1 - scale).subtract(shift);
+    canvases.forEach((c) => {
+      c.style.transition = "transform .25s cubic-bezier(0, 0, .25, 1)"; // Leaflet's own zoom easing
+      L.DomUtil.setTransform(c, offset, scale);
+    });
+  });
+  map.on("zoom", () => canvases.forEach((c) => {
+    c.style.transition = "";
+    L.DomUtil.setTransform(c, L.point(0, 0), 1);
+  }));
   map.on("move zoom resize", redraw);
   new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe(map.getContainer());
-  getJSON("data/manta_streets.json").then((d) => { mapState.streets = d.lines; drawStreets(); }).catch(() => {});
+  getJSON("data/manta_streets.json").then((d) => { mapState.streets = projectStreets(d.lines); drawStreets(); }).catch(() => {});
 
   segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; prepareRun(); drawPeople(); });
   segmented("#mapTiles", "tiles", (t) => {
@@ -673,7 +690,8 @@ function prepareRun() {
   if (!data) return;
   const cfg = data.config;
   const run = data.map[mapState.policy];
-  const toLL = (p) => [p[0] / 1e4, p[1] / 1e4, p[2]];
+  // [lat, lon, day, worldX, worldY]
+  const toLL = (p) => [p[0] / 1e4, p[1] / 1e4, p[2], ...toWorld(p[0] / 1e4, p[1] / 1e4)];
   const bitten = run.bitten.map(toLL);
   const vaccinated = run.vaccinated.map(toLL);
   const sick = cfg.latent_mean + cfg.infectious_mean;
@@ -800,25 +818,52 @@ function fitCanvas(canvas, ctx) {
   return size;
 }
 
+// Points are projected once to Web Mercator at zoom 0 ("world" coordinates);
+// on screen they are just world × 2^zoom + offset, much cheaper than a full
+// projection per point on every frame and every pan.
+function toWorld(lat, lon) {
+  const p = mapState.leaflet.project([lat, lon], 0);
+  return [p.x, p.y];
+}
+
+function screenTransform() {
+  const map = mapState.leaflet;
+  const z = map.getZoom();
+  const ref = map.latLngToContainerPoint([0, 0]);
+  const origin = map.project([0, 0], z);
+  return { k: 2 ** z, dx: ref.x - origin.x, dy: ref.y - origin.y };
+}
+
+function projectStreets(lines) {
+  return lines.map((line) => {
+    const xy = new Float64Array(line.p.length * 2);
+    let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
+    line.p.forEach(([lat, lon], i) => {
+      const [x, y] = toWorld(lat, lon);
+      xy[2 * i] = x; xy[2 * i + 1] = y;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    });
+    return { k: line.k, xy, box: [minX, minY, maxX, maxY] };
+  });
+}
+
 // Manta's real streets (OpenStreetMap), only once we are close enough to see them.
 function drawStreets() {
   const { streetCanvas: canvas, streetCtx: ctx, leaflet: map, streets } = mapState;
   if (!canvas || !map) return;
-  fitCanvas(canvas, ctx);
+  const size = fitCanvas(canvas, ctx);
   if (!streets || map.getZoom() < 11) return;
-  const bounds = map.getBounds().pad(0.1);
+  const { k, dx, dy } = screenTransform();
+  const pad = 40;
+  const view = [(-pad - dx) / k, (-pad - dy) / k, (size.x + pad - dx) / k, (size.y + pad - dy) / k];
   for (const kind of ["street", "main"]) {
     ctx.strokeStyle = kind === "main" ? "rgba(232, 210, 170, 0.55)" : "rgba(232, 210, 170, 0.22)";
     ctx.lineWidth = kind === "main" ? 1.6 : 0.8;
     ctx.beginPath();
-    for (const line of streets) {
-      if (line.k !== kind) continue;
-      const first = line.p[0];
-      if (!bounds.contains(first) && !bounds.contains(line.p[line.p.length - 1])) continue;
-      line.p.forEach((ll, i) => {
-        const pt = map.latLngToContainerPoint(ll);
-        if (i) ctx.lineTo(pt.x, pt.y); else ctx.moveTo(pt.x, pt.y);
-      });
+    for (const { k: lineKind, xy, box } of streets) {
+      if (lineKind !== kind || box[2] < view[0] || box[0] > view[2] || box[3] < view[1] || box[1] > view[3]) continue;
+      ctx.moveTo(xy[0] * k + dx, xy[1] * k + dy);
+      for (let i = 2; i < xy.length; i += 2) ctx.lineTo(xy[i] * k + dx, xy[i + 1] * k + dy);
     }
     ctx.stroke();
   }
@@ -829,6 +874,7 @@ function drawPeople() {
   if (!canvas || !map) return;
   fitCanvas(canvas, ctx);
   if (!run) return;
+  const T = screenTransform();
 
   const day = mapState.day;
   const now = performance.now() / 1000;
@@ -852,7 +898,7 @@ function drawPeople() {
     const age = day - p[2];
     if (age < 0) continue;
     bittenSoFar += 1;
-    const pt = map.latLngToContainerPoint([p[0], p[1]]);
+    const pt = { x: p[3] * T.k + T.dx, y: p[4] * T.k + T.dy };
     if (age < 1.5) later.ripple.push([pt, age]);
     if (age < run.latent) later.bitten.push(pt);
     else if (age < run.sick) { zombies += 1; later.zombie.push([pt, i]); }
@@ -865,7 +911,7 @@ function drawPeople() {
   for (const p of run.vaccinated) {
     if (p[2] > day) continue;
     vax += 1;
-    later.vax.push(map.latLngToContainerPoint([p[0], p[1]]));
+    later.vax.push({ x: p[3] * T.k + T.dx, y: p[4] * T.k + T.dy });
   }
   // Vaccinated: a small cyan "+".
   const arm = r * 0.95;
