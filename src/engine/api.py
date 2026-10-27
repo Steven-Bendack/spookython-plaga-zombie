@@ -23,7 +23,7 @@ from .strategies import (BASELINES, CANDIDATES, DESCRIPTIONS, LABELS, PLAYER_GRO
 PRESETS = {
     "base": {"label": "Escenario base", "changes": {}},
     "double_r0": {"label": "El doble de contagiosa", "changes": {"r0": 4.0}},
-    "half_doses": {"label": "La mitad de las vacunas", "changes": {"doses_per_day": 20}},
+    "half_doses": {"label": "La mitad de las vacunas", "changes": {"doses_per_day": SimConfig().doses_per_day // 2}},
     "market": {"label": "Empieza en el mercado", "changes": {"seed_location": "market"}},
     "weak_vaccine": {"label": "Variante: la vacuna cubre a medias", "changes": {"vaccine_efficacy": 0.5}},
 }
