@@ -1,8 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "",
-  "outputDirectory": "src/web",
-  "functions": {
-    "api/*.py": { "maxDuration": 60, "memory": 2048, "includeFiles": "src/engine/**" }
-  }
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/app" }]
 }

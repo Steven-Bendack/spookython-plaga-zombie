@@ -98,6 +98,9 @@ def git_commit() -> str:
     env = os.environ.get("GIT_COMMIT")
     if env:
         return env[:12]
+    stamped = os.path.join(os.path.dirname(__file__), "COMMIT")  # written by deploy scripts
+    if os.path.exists(stamped):
+        return open(stamped, encoding="utf-8").read().strip()[:12]
     try:
         out = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"], capture_output=True,
                              text=True, timeout=5, cwd=os.path.dirname(__file__))
