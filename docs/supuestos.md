@@ -120,3 +120,21 @@ Evaluamos y **descartamos** Collective Influence ([Morone y Makse 2015, Nature](
 | Ubicación de cada persona | su casa, al azar alrededor del centro de su barrio (≈ 600-700 m, solo hacia tierra adentro) | **Supuesto visual:** el modelo no usa coordenadas para contagiar, solo la red de contactos. El mapa repite la corrida 1 de la semilla elegida |
 | Estado en el mapa | Mordido durante la latencia media, Zombie durante los días contagiosos medios, luego Exorcizado | Aproximación visual con las duraciones promedio (las de cada persona varían) |
 | Mapa base | Esri (gris oscuro e imágenes satelitales) | Gratis con atribución y sin llave de API; Google Maps y CARTO exigen llave |
+
+## 9. Cierres y presupuesto (nivel Pro)
+
+| Parámetro | Valor | Justificación |
+|---|---|---|
+| Unidad de presupuesto | 1 unidad = 1 dosis | **Supuesto:** una sola moneda para comparar vacunas y cierres sin inventar precios en dólares |
+| Cerrar el mercado central, por día | 40 unidades | **Supuesto:** el mercado es el corazón comercial; cerrarlo un día "cuesta" como 40 dosis (2 días de vacunas) |
+| Cerrar los colegios, por día | 80 unidades | **Supuesto:** afecta a todos los estudiantes y a sus familias; el doble que el mercado |
+| Cuándo se cierra | mientras haya al menos 15 Zombies **detectados** y enfermos | El comité decide con lo que ve, igual que con las vacunas; se reabre cuando bajan |
+| Qué hace un cierre | apaga los contactos de esa capa (mercado o colegio) mientras dura | Las demás capas (hogar, trabajo, bus, barrio) siguen igual |
+| Presupuesto | 0 = sin límite; si hay límite, los cierres del día se pagan primero y las dosis con lo que queda | Así un presupuesto corto obliga a elegir |
+| Quién puede cerrar | todas las políticas menos "Nada" | Azar y la estrategia cierran con la misma regla: la comparación sigue siendo justa |
+
+Resultado con la semilla 2026 (sin límite): cerrar los **colegios** ~22 días evita ≈ 2 450 contagios más que solo vacunar; cerrar el **mercado** ~52 días evita apenas ≈ 130 y gasta casi lo mismo. Con un presupuesto corto, cerrar todo desde temprano deja sin dosis y sale peor. La interfaz compara los cuatro planes con las mismas semillas y recomienda el mejor.
+
+## 10. Sonido
+
+La banda sonora se genera en vivo con Web Audio (osciladores y ruido filtrado): no usa archivos ni música con derechos. Arranca al entrar y solo se apaga o baja en ⚙ Configuración.
