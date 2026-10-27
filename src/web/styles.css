@@ -791,17 +791,16 @@ body { overflow: hidden; background: #000; }
 
 /* SpookyThon logo on the intro: the pixel ghost beside the pixel title */
 .spooky { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-.spooky__ghost { width: 72px; flex: none; animation: ghostBob 2.6s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(120, 60, 200, .45)); }
+.spooky__ghost { width: 84px; flex: none; animation: ghostBob 2.6s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(120, 60, 200, .45)); }
 .spooky__ghost svg { display: block; width: 100%; height: auto; }
 .ghost__eye { animation: ghostBlink 4s steps(1) infinite; }
 @keyframes ghostBob { 50% { transform: translateY(-6px); } }
 @keyframes ghostBlink { 0%, 92%, 100% { opacity: 1; } 94% { opacity: 0; } }
 .spooky__text { display: grid; justify-items: start; gap: 6px; }
 .spooky__title {
-  font: 700 clamp(34px, 4.6vw, 54px)/1 "Pixelify Sans", var(--display); letter-spacing: .01em;
-  background: linear-gradient(180deg, #ffe066 0%, #ffb02e 45%, #ff7a1a 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 3px 0 #6b2fa8) drop-shadow(0 0 1px #2a1145);
+  font: 700 clamp(34px, 4.6vw, 54px)/1 "Pixelify Sans", var(--display); letter-spacing: .02em; color: #ffb52e;
+  text-shadow: 3px 0 #6b2fa8, -3px 0 #6b2fa8, 0 3px #6b2fa8, 0 -3px #6b2fa8, 3px 3px #6b2fa8, -3px 3px #6b2fa8,
+    3px -3px #6b2fa8, -3px -3px #6b2fa8, 0 7px #2e1250, 0 0 22px rgba(140, 80, 220, .5);
 }
 .spooky__year {
   font: 700 18px/1 "Pixelify Sans", var(--display); letter-spacing: .14em; color: #f4f1ff;
@@ -810,6 +809,6 @@ body { overflow: hidden; background: #000; }
 }
 @media (max-width: 900px) {
   .spooky { justify-content: center; }
-  .spooky__ghost { width: 56px; }
+  .spooky__ghost { width: 64px; }
 }
 @media (prefers-reduced-motion: reduce) { .spooky__ghost, .ghost__eye { animation: none; } }
