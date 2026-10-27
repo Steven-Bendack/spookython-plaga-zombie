@@ -75,6 +75,7 @@ p { margin: 0; }
   align-items: start;
 }
 .panel {
+  min-width: 0;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -223,11 +224,12 @@ input[type="number"], select {
 .is-loading { opacity: .55; transition: opacity .2s; }
 
 @media (max-width: 980px) {
-  .layout { grid-template-columns: 1fr; padding: 16px; }
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; }
   .controls { position: static; }
   .masthead { grid-template-columns: 1fr; gap: 12px; padding: 20px 16px; }
   .masthead__lede { justify-self: start; }
-  .jury__grid { grid-template-columns: 1fr; }
+  .jury__grid { grid-template-columns: minmax(0, 1fr); }
+  .panel { padding: 16px; }
 }
 @media (max-width: 620px) {
   .figures { grid-template-columns: 1fr; }
