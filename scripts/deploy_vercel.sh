@@ -11,4 +11,5 @@ cp -r "$ROOT/src/engine" "$OUT/src/"
 git -C "$ROOT" rev-parse --short=12 HEAD > "$OUT/src/engine/COMMIT"
 cp -r "$ROOT/src/web" "$OUT/public"
 find "$OUT" -name "__pycache__" -type d -prune -exec rm -rf {} +
-cd "$OUT" && npx -y vercel@latest deploy --prod --yes --scope "${VERCEL_SCOPE:-usandovercel}"
+# Non-interactive when VERCEL_TOKEN is set (CI or cloud sessions); otherwise uses `vercel login`.
+cd "$OUT" && npx -y vercel@latest deploy --prod --yes --scope "${VERCEL_SCOPE:-usandovercel}" ${VERCEL_TOKEN:+--token "$VERCEL_TOKEN"}
