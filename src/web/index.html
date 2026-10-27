@@ -13,17 +13,16 @@
   <link rel="icon" href="assets/mineral-halloween.svg" type="image/svg+xml">
 </head>
 <body>
-  <div class="fog" aria-hidden="true"><span></span><span></span></div>
-
+  
   <header class="masthead">
     <div class="masthead__brand">
       <div>
-        <p class="eyebrow">Comité de Contención · Manta · SpookyThon 2026</p>
+        <p class="eyebrow">Comité de Contención de Manta</p>
         <h1 class="title">La Plaga Zombie</h1>
       </div>
     </div>
     <div class="masthead__side">
-      <p class="masthead__lede">Mira cómo la plaga recorre Manta día a día y qué estrategia de vacunación salva más gente, con cientos de corridas pareadas contra no hacer nada y contra vacunar al azar.</p>
+      <p class="masthead__lede">Cada día llegan pocas vacunas. Aquí probamos a quién ponérselas: simulamos la plaga cien veces por estrategia, con la misma suerte para todas, y comparamos contra no hacer nada y contra repartirlas al azar.</p>
       <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
         <img src="assets/mineral-halloween.svg" alt="" width="44" height="46">
         <span>Hecho por<br><strong>Mineral Studio</strong></span>
@@ -125,10 +124,10 @@
       <section class="panel verdict" id="verdict">
         <div class="verdict__empty" id="empty">
           <p class="eyebrow">Sin resultados todavía</p>
-          <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. El mapa viajará a Manta y repetirá el brote día por día.</p>
+          <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. Después el mapa repite el brote calle por calle.</p>
         </div>
         <div class="verdict__body" id="verdictBody" hidden>
-          <p class="eyebrow">Recomendación del comité</p>
+          <p class="eyebrow">El comité recomienda</p>
           <h2 class="verdict__name" id="bestName"></h2>
           <p class="verdict__text" id="recText"></p>
           <div class="figures">
@@ -161,7 +160,7 @@
       <!-- Animated map -->
       <section class="panel mapcard" id="mapcard">
         <div class="panel__head">
-          <h2>La plaga sobre Manta</h2>
+          <h2>El brote, calle por calle</h2>
           <div class="segmented" role="group" aria-label="Qué corrida ver en el mapa" id="mapPolicy">
             <button type="button" class="segmented__btn" data-policy="none" aria-pressed="true">Sin intervenir</button>
             <button type="button" class="segmented__btn" data-policy="random" aria-pressed="false">Azar</button>
@@ -193,7 +192,7 @@
         </div>
         <p class="hint map-legend">
           <i class="dot dot--bitten"></i>Mordido <i class="dot dot--zombie"></i>Zombie <i class="dot dot--gone"></i>Exorcizado <i class="dot dot--vax"></i>Vacunado
-          · <span id="mapRun">Corrida típica</span> de la semilla elegida (la mediana de personas salvadas). Cada punto es una persona simulada (≈ 27 en la vida real); las casas se ubican al azar dentro de su barrio.
+          · <span id="mapRun">Corrida típica</span> de la semilla elegida (la mediana de personas salvadas). Cada punto es una persona simulada (≈ 27 en la vida real); cada hogar está en una calle real de su barrio (OpenStreetMap).
         </p>
       </section>
 
