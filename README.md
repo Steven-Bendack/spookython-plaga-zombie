@@ -95,12 +95,15 @@ python -m pytest
 Requisitos: cuenta de AWS **con AWS Budget y alerta** (ver abajo), AWS CLI con un perfil propio (`aws configure sso`; nunca llaves en el repositorio) y AWS SAM CLI. Región: **us-east-1**.
 
 ```bash
-python infra/build_layer.py                          # numpy para Linux, sin Docker
-sam build -t infra/template.yaml
-sam deploy --guided --stack-name plaga-zombie --region us-east-1 --capabilities CAPABILITY_IAM
-# Subir la web (usar los valores de los Outputs del stack):
-aws s3 sync src/web s3://<WebBucketName> --delete
-aws cloudfront create-invalidation --distribution-id <DistributionId> --paths "/*"
+AWS_PROFILE=<tu-perfil> bash scripts/deploy_aws.sh
+```
+
+El script muestra la cuenta y pide confirmación, construye la capa de numpy para Linux (sin Docker), hace `sam build` y `sam deploy`, sube `src/web` a S3, invalida CloudFront y prueba `/`, `/api/meta` y `/api/simulate` en la URL pública. Verificado en local: `sam validate --lint` y `sam build` pasan (cada función pesa 1,7 MB; numpy va en la capa).
+
+AWS Budget con alerta (una vez, antes de desplegar; luego tomar la captura en la consola de Billing → Budgets):
+
+```bash
+aws budgets create-budget --account-id <ID_DE_CUENTA>   --budget '{"BudgetName":"plaga-zombie","BudgetLimit":{"Amount":"10","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}'   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":50,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"<CORREO>"}]}]'
 ```
 
 Antes de desplegar, revisar en **Service Quotas** la concurrencia de Lambda de la cuenta: en cuentas nuevas puede ser baja. Si es menor a 50, bajar `MaxFanout` y `MapMaxConcurrency` en `sam deploy` o pedir un aumento.
