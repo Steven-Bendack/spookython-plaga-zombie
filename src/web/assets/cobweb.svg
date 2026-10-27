@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#efe6d6" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round">
+  <!-- A corner cobweb, drawn by hand: spokes from the corner and sagging threads between them. -->
+  <path d="M0 0L200 18M0 0L190 80M0 0L150 150M0 0L80 190M0 0L18 200"/>
+  <path d="M36 3C34 12 32 18 34 26C28 28 22 30 20 34C14 32 8 34 3 36"/>
+  <path d="M74 7C70 22 66 32 68 46C58 50 50 54 46 62C38 60 28 64 20 70C14 70 10 72 7 74"/>
+  <path d="M116 10C110 32 104 46 106 66C94 72 84 78 78 90C68 88 56 94 46 104C34 104 22 110 10 116"/>
+  <path d="M158 14C150 42 142 62 144 88C128 98 116 106 108 122C94 120 78 128 66 140C50 142 32 150 14 158"/>
+</svg>

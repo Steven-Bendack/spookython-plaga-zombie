@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" fill="#07050a">
+  <!-- Manta at night: port cranes, a ship, the city, the church, palms and the sea. Hand-built silhouette. -->
+  <!-- port cranes -->
+  <path d="M60 260V120h10v-8h60v8h-6l40 40h-8l-36-34v134z"/>
+  <path d="M150 260V96h10v-8h70v8h-8l46 46h-9l-41-39v157z"/>
+  <path d="M42 120h120v4H42zM132 96h140v4H132z"/>
+  <!-- container ship -->
+  <path d="M250 226h230l-24 34H274z"/>
+  <path d="M290 202h28v24h-28zM322 196h28v30h-28zM354 206h28v20h-28zM386 190h22v36h-22zM412 210h30v16h-30z"/>
+  <path d="M440 170h12v40h-12zM436 166h20v6h-20z"/>
+  <!-- city blocks -->
+  <path d="M500 260V178h40v82zM544 260V150h34v110zM582 260V196h28v64zM614 260V132h46v128zM664 260V170h30v90zM698 260V186h52v74z"/>
+  <path d="M754 260V146h38v114zM796 260V112h24v-10h8v10h24v148zM856 260V176h40v84zM900 260V158h30v102z"/>
+  <!-- church with tower -->
+  <path d="M940 260V180l40-30 40 30v80z"/>
+  <path d="M968 160V108l12-18 12 18v52z"/>
+  <path d="M979 90h2v-14h-2zM973 82h14v2h-14z"/>
+  <!-- more city -->
+  <path d="M1030 260V164h44v96zM1078 260V140h30v120zM1112 260V182h46v78zM1162 260V126h38v134zM1204 260V172h32v88zM1240 260V190h50v70z"/>
+  <!-- palms -->
+  <path d="M1320 260c2-40 6-72 12-100h4c-4 30-7 62-8 100z"/>
+  <path d="M1334 160c-20-12-44-12-62 2 20-4 40-2 60 2zM1336 158c10-18 30-28 54-26-20 6-36 14-50 28zM1334 160c18-6 40-2 58 12-20-6-38-8-56-8zM1332 160c-6-20-22-32-44-34 18 8 32 18 40 36z"/>
+  <path d="M1420 260c1-30 4-56 9-78h4c-4 22-6 48-7 78z"/>
+  <path d="M1431 182c-16-10-36-10-50 2 16-4 32-2 48 2zM1433 180c8-14 24-22 44-20-16 4-30 12-40 22zM1431 182c14-4 32 0 46 10-16-4-30-6-44-6z"/>
+  <!-- sea line -->
+  <path d="M0 252h1600v8H0z"/>
+</svg>
