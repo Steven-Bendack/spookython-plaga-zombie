@@ -57,6 +57,7 @@
     </div>
     <div class="masthead__side">
       <p class="masthead__lede">Cada día llegan pocas vacunas. Aquí probamos a quién ponérselas: simulamos la plaga cien veces por estrategia, con la misma suerte para todas, y comparamos contra no hacer nada y contra repartirlas al azar.</p>
+      <button type="button" class="btn btn--primary play-btn" data-open-game>Jugar: Modo Comité</button>
       <button type="button" class="settings-btn" id="settingsBtn" aria-haspopup="dialog">⚙ Configuración</button>
       <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
         <img src="assets/mineral-halloween.svg" alt="" width="44" height="46">
@@ -216,6 +217,15 @@
         </div>
       </section>
 
+      <section class="panel play-card">
+        <div>
+          <p class="eyebrow">Modo Comité</p>
+          <h2 class="play-card__title">¿Puedes salvar Manta mejor que la máquina?</h2>
+          <p class="hint">Decide semana a semana a quién vacunar y qué cerrar, viendo solo los casos detectados. Al final, tu plan contra el comité automático.</p>
+        </div>
+        <button type="button" class="btn btn--primary" data-open-game>Jugar</button>
+      </section>
+
       <!-- Animated map -->
       <section class="panel mapcard" id="mapcard">
         <div class="panel__head">
@@ -369,6 +379,79 @@
       </footer>
     </main>
   </div>
+
+
+  <section class="game" id="game" hidden role="dialog" aria-modal="true" aria-labelledby="gameTitle">
+    <header class="game__bar">
+      <h2 class="game__title" id="gameTitle">Modo Comité</h2>
+      <dl class="game__stats">
+        <div><dt>Semana</dt><dd id="gWeek">1</dd></div>
+        <div><dt>Día</dt><dd id="gDay">0</dd></div>
+        <div><dt>Presupuesto</dt><dd id="gBudget">0</dd></div>
+        <div class="gs--zombie"><dt>Zombis detectados</dt><dd id="gDetected">0</dd></div>
+        <div class="gs--vax"><dt>Dosis puestas</dt><dd id="gDoses">0</dd></div>
+      </dl>
+      <button type="button" class="btn btn--ghost" id="gameClose">Salir</button>
+    </header>
+
+    <div class="game__start" id="gameStartView">
+      <p class="eyebrow">Tú eres el comité</p>
+      <h3 class="game__headline">¿Puedes salvar Manta mejor que la máquina?</h3>
+      <ul class="game__rules">
+        <li>Cada turno es una semana. Llegan vacunas y tú decides a quién van y si cierras el mercado o los colegios.</li>
+        <li>Solo ves a los zombis <strong>detectados</strong>. Los mordidos y los zombis sin detectar también están ahí.</li>
+        <li>Al final se revela todo y tu plan se compara, en las mismas corridas, con el comité automático y con el azar.</li>
+      </ul>
+      <fieldset class="game__levels">
+        <legend>Dificultad</legend>
+        <label class="level"><input type="radio" name="difficulty" value="normal" checked><span><strong>Normal</strong><small>R0 2 · 20 vacunas al día</small></span></label>
+        <label class="level"><input type="radio" name="difficulty" value="hard"><span><strong>Difícil</strong><small>R0 3 · 15 vacunas al día</small></span></label>
+        <label class="level"><input type="radio" name="difficulty" value="nightmare"><span><strong>Pesadilla</strong><small>R0 4 · 10 vacunas · se detecta menos</small></span></label>
+      </fieldset>
+      <label class="field game__seed"><span class="field__label">Semilla de la partida</span><input type="number" id="gameSeed" min="0"></label>
+      <button type="button" class="btn btn--primary btn--enter" id="gameStartBtn">Empezar la partida</button>
+    </div>
+
+    <div class="game__main" id="gameMain" hidden>
+      <div class="game__map-wrap">
+        <div id="gameMap" class="game__map" role="img" aria-label="Manta: zombis detectados y dosis puestas"></div>
+        <p class="game__status" id="gameStatus"></p>
+      </div>
+      <aside class="game__panel" id="gamePanel">
+        <h3 class="mini-title">Esta semana</h3>
+        <label class="field">
+          <span class="field__label">Las vacunas van a…</span>
+          <select id="gameMode">
+            <option value="ring">Contactos de los casos detectados</option>
+            <option value="degree">Los más conectados</option>
+            <option value="random">Al azar</option>
+            <option value="barrio">Todo a un barrio</option>
+          </select>
+        </label>
+        <label class="field" id="gameBarrioWrap" hidden>
+          <span class="field__label">Barrio</span>
+          <select id="gameBarrio"></select>
+        </label>
+        <label class="check"><input type="checkbox" id="gameMarket"> Cerrar el mercado (<span id="gCostMarket"></span>/sem.)</label>
+        <label class="check"><input type="checkbox" id="gameSchools"> Cerrar los colegios (<span id="gCostSchools"></span>/sem.)</label>
+        <p class="hint" id="gCostWeek"></p>
+        <button type="button" class="btn btn--primary" id="gameNext">Siguiente semana ▶</button>
+        <button type="button" class="btn btn--ghost" id="gameFinish">Mantener hasta el final</button>
+        <h3 class="mini-title">Noticias</h3>
+        <ol class="game__news" id="gameNews"></ol>
+        <h3 class="mini-title">Zombis detectados por día</h3>
+        <canvas class="game__spark" id="gameSpark"></canvas>
+      </aside>
+      <div class="game__end" id="gameEnd" hidden>
+        <p class="eyebrow">Se revela la verdad</p>
+        <h3 class="game__headline" id="gameEndTitle"></h3>
+        <div class="game__bars" id="gameBars"></div>
+        <p id="gameEndText"></p>
+        <p class="hint">En el mapa: todos los que fueron mordidos, incluidos los que el comité nunca vio (amarillo = al inicio, rojo = al final).</p>
+        <button type="button" class="btn btn--primary" id="gameAgain">Jugar otra vez</button>
+      </div>
+    </div>
+  </section>
 
   <div class="mobile-run"><button type="submit" form="form" class="btn btn--primary">Recomendar</button></div>
 

@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from engine.api import meta, simulate  # noqa: E402
 from engine.config import SimConfig  # noqa: E402
+from engine.game import play  # noqa: E402
 from engine.jury import red_team  # noqa: E402
 from engine.montecarlo import process_pool_runner  # noqa: E402
 
@@ -43,6 +44,9 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if self.path.startswith("/api/simulate"):
                 return self._json(simulate(body, process_pool_runner))
+            if self.path.startswith("/api/game"):
+                return self._json(play(body.get("seed", 2026), body.get("difficulty", "normal"),
+                                       body.get("decisions", [])))
             if self.path.startswith("/api/jury"):
                 cfg = SimConfig.from_dict(body)
                 points = int(min(max(body.get("points", 24), 8), 60))

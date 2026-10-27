@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from engine.api import meta, simulate  # noqa: E402
+from engine.game import play  # noqa: E402
 
 MAX_RUNS = 40
 MAX_BODY = 16_384
@@ -26,6 +27,10 @@ def app(environ, start_response):
             body = _body(environ)
             body["runs"] = min(int(body.get("runs", MAX_RUNS)), MAX_RUNS)
             return _json(start_response, simulate(body))
+        if method == "POST" and path.endswith("/api/game"):
+            body = _body(environ)
+            return _json(start_response, play(body.get("seed", 2026), body.get("difficulty", "normal"),
+                                              body.get("decisions", [])))
         if method == "POST" and path.endswith("/api/jury"):
             return _json(start_response, {"error": "El ataque en vivo corre en la versión de AWS o en local; "
                                                    "aquí se muestra el último ataque guardado"}, "503 Service Unavailable")

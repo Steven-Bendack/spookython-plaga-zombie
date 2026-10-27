@@ -1,5 +1,6 @@
 // Plaga Zombie · Manta — UI. Plain ES module, no build step.
 import * as sound from "./sound.js";
+import { initGame } from "./game.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -37,6 +38,7 @@ if (window.Chart) {
 
 async function init() {
   initIntro();
+  initGame();
   initMap();
   const [meta, dmap, jury, real, scenarios] = await Promise.all([
     getJSON(`${API}/meta`),

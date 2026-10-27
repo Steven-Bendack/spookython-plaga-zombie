@@ -3,6 +3,7 @@
 Routes (CloudFront forwards /api/* here):
     GET  /api/meta              defaults, presets and city facts
     POST /api/simulate          tournament; chunks fan out to the worker Lambda
+    POST /api/game              Committee Mode: replay the player's weekly decisions
     POST /api/jobs              start a big Monte Carlo job (Step Functions Distributed Map)
     GET  /api/jobs/{id}         job status and, when done, its report
 
@@ -19,6 +20,7 @@ import boto3
 
 from engine.api import meta, simulate
 from engine.config import SimConfig
+from engine.game import play
 
 _lambda = boto3.client("lambda")
 _sfn = boto3.client("stepfunctions")
@@ -55,6 +57,9 @@ def handler(event, _context):
             body = _body(event)
             body["runs"] = min(int(body.get("runs", 100)), MAX_INTERACTIVE_RUNS)
             return _ok(simulate(body, lambda_runner))
+        if method == "POST" and path.endswith("/api/game"):
+            body = _body(event)
+            return _ok(play(body.get("seed", 2026), body.get("difficulty", "normal"), body.get("decisions", [])))
         if method == "POST" and path.endswith("/api/jobs"):
             return _ok(_start_job(_body(event)), status=202)
         if method == "GET" and "/api/jobs/" in path:

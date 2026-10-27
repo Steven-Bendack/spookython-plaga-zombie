@@ -117,6 +117,9 @@ Resources:
         Simulate:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/simulate }
+        Game:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/game }
         StartJob:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/jobs }
