@@ -943,7 +943,9 @@ async function arrival(token) {
   // The ticker is redrawn every frame, so the caption rides on the vehicle.
   marker.bindTooltip(`La plaga llega ${entry.text}`, { permanent: true, direction: "top", offset: [0, -20], className: "vehicle-label" }).openTooltip();
   try {
-    await flyAndWait(L.latLngBounds([entry.from, entry.at, zero]).pad(0.25).getCenter(), 13, 1);
+    // Frame the whole trip on any screen: phones need a lower zoom than desktops.
+    const trip = L.latLngBounds([entry.from, entry.at, zero]);
+    await flyAndWait(trip.getCenter(), Math.min(13, map.getBoundsZoom(trip, false, L.point(60, 160))), 1);
     const legs = [[entry.from, entry.at, 2200], [entry.at, zero, 900]];
     for (const [a, b, ms] of legs) {
       const el = marker.getElement()?.querySelector(".vehicle__body");
