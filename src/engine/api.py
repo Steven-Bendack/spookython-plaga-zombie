@@ -13,10 +13,11 @@ import numpy as np
 from .config import ENGINE_VERSION, SimConfig
 from dataclasses import replace
 
-from .montecarlo import Runner, paired, run_many, serial_runner, tournament
+from .montecarlo import Runner, paired, policy_summary, rank_candidates, run_many, run_policies, serial_runner, tournament
 from .population import BARRIO_NAMES, BARRIOS, build_city
 from .seir import simulate_policy
-from .strategies import DESCRIPTIONS, LABELS
+from .strategies import (BASELINES, CANDIDATES, DESCRIPTIONS, LABELS, PLAYER_GROUPS, PLAYER_MAX_GROUPS,
+                         player_label, player_policy)
 
 # Surprise Outbreak presets (the jury's own examples), relative to the defaults.
 PRESETS = {
@@ -64,6 +65,59 @@ def simulate(request: dict, runner: Runner = serial_runner) -> dict:
         "closure_plans": plans,
         "elapsed_seconds": round(time.perf_counter() - started, 2),
     }
+
+
+def challenge(request: dict, runner: Runner = serial_runner) -> dict:
+    """«¿Le ganas al comité?»: the player's plan against the committee's pick.
+
+    Same config, same seeds, same doses: the player's plan, Nada, Azar and the
+    committee's candidates all face the same epidemic luck in every run. The
+    committee chooses its strategy exactly as in simulate() and is compared with
+    the player run by run.
+    """
+    started = time.perf_counter()
+    cfg = SimConfig.from_dict({**request, "strategy": "auto"})
+    player = player_policy(request.get("plan") or [])
+    beta, runs = run_policies(cfg, BASELINES + CANDIDATES + (player,), runner)
+    committee = rank_candidates(runs, CANDIDATES)[0]
+    none, rnd, mine, theirs = runs["none"], runs["random"], runs[player], runs[committee]
+    vs_player = paired(mine, theirs)  # people the committee saved beyond the player's plan
+    out = {
+        "config": cfg.to_dict(),
+        "certificate": {**certificate(cfg), "plan": player},
+        "manta_scale": cfg.manta_scale,
+        "player": {"label": player_label(player), "plan": player.split(":", 1)[1].split(","),
+                   "vs_none": paired(none, mine), "vs_random": paired(rnd, mine),
+                   "summary": policy_summary(mine, cfg.population)},
+        "committee": {"name": committee, "label": LABELS[committee], "description": DESCRIPTIONS[committee],
+                      "vs_none": paired(none, theirs), "vs_random": paired(rnd, theirs),
+                      "summary": policy_summary(theirs, cfg.population)},
+        "committee_vs_player": vs_player,
+        "curves": {"none": policy_summary(none, cfg.population)["curves"]["I"],
+                   "random": policy_summary(rnd, cfg.population)["curves"]["I"]},
+        "player_wins": vs_player["median"] < 0,
+        "elapsed_seconds": 0.0,
+    }
+    out["verdict_text"] = challenge_text(cfg, out)
+    out["elapsed_seconds"] = round(time.perf_counter() - started, 2)
+    return out
+
+
+def challenge_text(cfg: SimConfig, out: dict) -> str:
+    gap = out["committee_vs_player"]
+    committee_wins = round(gap["win_rate"] * cfg.runs)
+    player_wins = round(gap["loss_rate"] * cfg.runs)
+    mine = out["player"]["vs_none"]["mean"]
+    theirs = out["committee"]["vs_none"]["mean"]
+    scale = cfg.manta_scale
+    if out["player_wins"]:
+        return (f"¡Le ganaste al comité! Tu plan evita {_num(mine)} contagios frente a no hacer nada "
+                f"y el comité ({out['committee']['label']}) {_num(theirs)}. Con la misma suerte, tu plan "
+                f"gana en {player_wins} de {cfg.runs} semillas. Prueba otra semilla: ¿sigue ganando?")
+    return (f"Gana el comité con «{out['committee']['label']}». Con las mismas dosis y la misma suerte "
+            f"evita {_num(gap['mean'])} contagios más que tu plan (≈ {_num(gap['mean'] * scale)} personas "
+            f"en Manta) y gana en {committee_wins} de {cfg.runs} semillas. Tu plan evita {_num(mine)} "
+            f"frente a no hacer nada; el comité, {_num(theirs)}.")
 
 
 PLAN_RUNS = 40  # runs per closure plan (paired with the first runs of "Nada")
@@ -210,6 +264,8 @@ def meta() -> dict:
             {"value": "school", "label": "Un colegio"},
             *({"value": b, "label": f"Barrio {b}"} for b in BARRIO_NAMES),
         ],
+        "player_groups": [{"value": k, "label": v} for k, v in PLAYER_GROUPS.items()],
+        "player_max_groups": PLAYER_MAX_GROUPS,
         "strategies": [{"value": k, "label": v, "description": DESCRIPTIONS[k]}
                        for k, v in LABELS.items() if k not in ("none", "random")],
         "city": city.summary(),
