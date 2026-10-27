@@ -3,6 +3,7 @@ import * as sound from "./sound.js";
 import { createGlobe, HANDOFF_ZOOM } from "./globe.js";
 import { ghostSVG } from "./ghost.js";
 import { humanSVG, turnedSVG, zombieSVG } from "./sprites.js";
+import { DOCK, SEA, SPRITES, along, route, streetGraph } from "./arrival.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -757,7 +758,11 @@ function initMap() {
   }));
   map.on("move zoom resize", redraw);
   new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe(map.getContainer());
-  getJSON("data/manta_streets.json").then((d) => { mapState.streets = projectStreets(d.lines); drawStreets(); }).catch(() => {});
+  getJSON("data/manta_streets.json").then((d) => {
+    mapState.streets = projectStreets(d.lines);
+    mapState.graph = streetGraph(d.lines);  // for the car that brings patient zero
+    drawStreets();
+  }).catch(() => {});
 
   segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; exitSplit(); prepareRun(); drawPeople(); });
   segmented("#mapTiles", "tiles", (t) => {
@@ -932,6 +937,93 @@ function flyAndWait(target, zoom, seconds) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ---------- the arrival: a ship docks, a car drives the plague to patient zero ----------
+
+function drawActors(ctx, T, r) {
+  const px = Math.max(1.5, r * 0.75);  // screen pixels per sprite pixel
+  ctx.imageSmoothingEnabled = false;
+  for (const a of mapState.actors || []) {
+    // A fading wake behind the ship, dust behind the car.
+    a.trail.forEach(([lat, lon], i) => {
+      const [wx, wy] = toWorld(lat, lon);
+      ctx.fillStyle = a.kind === "ship" ? `rgba(220, 240, 255, ${0.5 * (i + 1) / a.trail.length})` : `rgba(242, 194, 48, ${0.35 * (i + 1) / a.trail.length})`;
+      ctx.fillRect(wx * T.k + T.dx - px / 2, wy * T.k + T.dy - px / 2, px, px);
+    });
+    const { img, w, h } = SPRITES[a.kind];
+    const [wx, wy] = toWorld(a.at[0], a.at[1]);
+    const flip = Math.abs(a.heading) > Math.PI / 2;  // keep the sprite upright when heading left
+    ctx.save();
+    ctx.translate(wx * T.k + T.dx, wy * T.k + T.dy);
+    ctx.rotate(flip ? a.heading - Math.PI : a.heading);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(img, (-w * px) / 2, (-h * px) / 2, w * px, h * px);
+    ctx.restore();
+  }
+}
+
+function moveActor(kind, path, ms, token, follow) {
+  const map = mapState.leaflet;
+  const actor = { kind, at: path[0], heading: 0, trail: [] };
+  mapState.actors = [...(mapState.actors || []).filter((a) => a.kind !== kind), actor];
+  return new Promise((resolve) => {
+    const start = performance.now();
+    const frame = (now) => {
+      if (token !== mapState.playToken) return resolve(false);
+      const t = Math.min(1, (now - start) / ms);
+      const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+      const pos = along(path, ease);
+      actor.at = pos.at;
+      actor.heading = pos.heading;
+      actor.trail = [...actor.trail, pos.at].slice(-14);
+      if (follow) map.setView(pos.at, map.getZoom(), { animate: false });
+      else drawPeople();
+      if (t < 1) requestAnimationFrame(frame); else resolve(true);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+async function arrival(token) {
+  const run = mapState.run;
+  const firsts = run.bitten.filter((p) => p[2] === 0);
+  const barrios = (mapState.split ? mapState.split.data : mapState.data).map.barrios;
+  if (!firsts.length || !mapState.graph) return play(true);
+  const zero = firsts[0];
+  const barrio = nearestBarrio(zero[0], zero[1], barrios);
+  const ticker = (text) => { $("#ticker").textContent = text; };
+  const cancelled = () => token !== mapState.playToken;
+  mapState.inShot = true;
+  mapState.holdTicker = true;  // the scene tells its own story in the ticker
+  mapState.day = -0.01;  // nobody is bitten until the car arrives
+  mapState.shots = mapState.shots.filter((s) => s.day > 0);  // this scene replaces the patient-zero shot
+
+  ticker("Día 0: un barco de carga entra al puerto de Manta…");
+  await flyAndWait([(SEA[0] + DOCK[0]) / 2, (SEA[1] + DOCK[1]) / 2], 14, 1.3);
+  if (!cancelled()) await moveActor("ship", [SEA, DOCK], 2600, token, false);
+  if (!cancelled()) {
+    ticker(`Día 0: baja un pasajero que no se siente bien y toma un carro hacia ${barrio}…`);
+    await flyAndWait(DOCK, 15, 0.9);
+  }
+  if (!cancelled()) {
+    const path = route(mapState.graph, DOCK, [zero[0], zero[1]]);
+    await moveActor("car", path, Math.min(5500, Math.max(2500, path.length * 45)), token, true);
+  }
+  if (!cancelled()) {
+    mapState.actors = mapState.actors.filter((x) => x.kind !== "car");  // the passenger gets out
+    mapState.day = 0.4;  // the bite: patient zero and the first cases appear
+    ticker(`Día 0: el pasajero muerde a alguien en ${barrio}. Nace el paciente cero. Nadie lo sabe todavía.`);
+    sound.bite();
+    const until = performance.now() + 1800;
+    while (performance.now() < until && !cancelled()) { drawPeople(); await wait(60); }
+  }
+  mapState.actors = [];
+  mapState.holdTicker = false;
+  mapState.day = Math.max(0, mapState.day);
+  if (!cancelled()) await flyAndWait(CITY, cityZoom(), 1.2);
+  mapState.inShot = false;
+  if (!cancelled()) play(true);
+}
+
 async function cinematic(shot, token) {
   mapState.inShot = true;
   mapState.day = Math.max(mapState.day, shot.day + 0.4);  // the headline bubble pops up
@@ -959,6 +1051,11 @@ function play(resume = false) {
   mapState.playing = true;
   const token = (mapState.playToken = (mapState.playToken || 0) + 1);
   clearTimeout(mapState.idle);
+  if (!resume && mapState.day === 0 && cameraOn()) {
+    $("#play").textContent = "❚❚";
+    $("#play").setAttribute("aria-label", "Pausa");
+    return arrival(token);
+  }
   $("#play").textContent = "❚❚";
   $("#play").setAttribute("aria-label", "Pausa");
   let last = performance.now();
@@ -982,6 +1079,8 @@ function play(resume = false) {
 
 function pause() {
   mapState.playing = false;
+  mapState.actors = [];
+  mapState.day = Math.max(0, mapState.day);
   mapState.playToken = (mapState.playToken || 0) + 1;  // cancels a camera shot in progress
   cancelAnimationFrame(mapState.raf);
   $("#play").textContent = "▶";
@@ -1097,13 +1196,14 @@ function drawPeople() {
     drawBarrioNames(ctx, map);
     drawBubbles(ctx, map, day, run.events);
   }
+  drawActors(ctx, T, r);
   const { zombies, bitten: bittenSoFar, vax } = stats;
 
   const n = (split ? split.data : mapState.data).config.population;
   $("#barZombies").style.width = `${Math.min(100, (100 * zombies) / mapState.peakZombies)}%`;
   $("#barBitten").style.width = `${(100 * bittenSoFar) / n}%`;
   $("#barVax").style.width = `${(100 * vax) / n}%`;
-  $("#hudDay").textContent = Math.floor(day);
+  $("#hudDay").textContent = Math.max(0, Math.floor(day));
   $("#hudZombies").textContent = fmt(zombies);
   $("#hudBitten").textContent = fmt(bittenSoFar);
   $("#hudVax").textContent = fmt(vax);
@@ -1117,7 +1217,7 @@ function drawPeople() {
   badge.hidden = names.length === 0;
   badge.textContent = names.join(" · ");
   sound.setTension((zombies / n) * 10);
-  const ev = split ? null : run.events.filter((e) => e.day <= day).at(-1);
+  const ev = split || mapState.holdTicker ? null : run.events.filter((e) => e.day <= day).at(-1);
   const ticker = $("#ticker");
   if (ev && ticker.textContent !== ev.text) {
     ticker.textContent = ev.text;
