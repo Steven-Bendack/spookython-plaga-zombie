@@ -310,10 +310,6 @@ input[type="checkbox"] { accent-color: var(--pumpkin); width: 16px; height: 16px
   .map-hud strong { font-size: 18px; }
 
 }
-@media (prefers-reduced-motion: reduce) {
-  .tick, .btn--primary, .ticker__tag, .manta-pin, .ticker__text.is-new { animation: none; }
-
-}
 
 /* ---------- Intro ---------- */
 .intro {
@@ -381,12 +377,6 @@ input[type="checkbox"] { accent-color: var(--pumpkin); width: 16px; height: 16px
   .scenario { grid-template-columns: minmax(0, 1fr) 90px; }
   .scenario__spark { width: 90px; }
   .chart-box { height: 260px; }
-
-}
-@media (prefers-reduced-motion: reduce) {
-  .intro__content { animation: none; }
-  .intro { transition: none; }
-  .seg { transition: none; }
 
 }
 
@@ -757,10 +747,6 @@ body { overflow: hidden; background: #000; }
   .speed__btn { min-width: 30px; padding: 6px; }
   .icon-btn--play { width: 38px; height: 38px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ui, .drawer, .sheet, .intro__content { transition: none; }
-  .btn--run, .loading__ring { animation: none; }
-}
 
 /* Fixes after the first pass */
 .map { z-index: 0; }  /* Leaflet's own controls stay under the floating panels */
@@ -811,7 +797,6 @@ body { overflow: hidden; background: #000; }
   .spooky { justify-content: center; }
   .spooky__ghost { width: 64px; }
 }
-@media (prefers-reduced-motion: reduce) { .spooky__ghost, .ghost__eye { animation: none; } }
 
 /* «¿Le ganas al comité?» */
 .btn--challenge {
@@ -949,8 +934,4 @@ body { overflow: hidden; background: #000; }
 @keyframes bite { 0%, 58% { opacity: 0; transform: scale(.4); } 62% { opacity: 1; transform: scale(1.2); } 72% { opacity: 1; transform: scale(1); } 78%, 100% { opacity: 0; } }
 @keyframes run { 50% { transform: translateY(-3px); } }
 @keyframes shamble { 50% { transform: translateY(-1px) rotate(-3deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .chase__zombie, .chase__victim, .chase__human, .chase__turned, .chase__bite, .chase svg { animation: none !important; }
-  .chase__zombie { left: 30%; } .chase__victim { left: 58%; }
-}
 body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }

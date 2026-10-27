@@ -104,7 +104,8 @@ function segmented(groupSel, attr, onChange) {
 
 // ---------- intro: the planet, the dive onto Manta, then the city waits for Recomendar ----------
 
-const motionOff = () => matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm");
+// The OS setting only picks the default; the "Animaciones" switch in Ajustes always wins.
+const motionOff = () => document.body.classList.contains("calm");
 
 function initIntro() {
   const intro = $("#intro");
@@ -254,7 +255,7 @@ function initSettings() {
 }
 
 function loadPrefs() {
-  const defaults = { volume: 0.8, motion: true };
+  const defaults = { volume: 0.8, motion: !matchMedia("(prefers-reduced-motion: reduce)").matches };
   try { return { ...defaults, ...JSON.parse(localStorage.getItem("plaga-prefs") || "{}") }; } catch { return defaults; }
 }
 
@@ -950,7 +951,7 @@ function play(resume = false) {
     // Shots still ahead of the playhead will be visited.
     mapState.shots = cameraShots(mapState.run).filter((s) => s.day >= Math.floor(mapState.day));
   }
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm")) {
+  if (motionOff()) {
     mapState.day = mapState.lastDay;
     drawPeople();
     return;
@@ -991,7 +992,7 @@ function pause() {
 // While paused, zombies keep breathing (a few frames per second is enough).
 function idle() {
   clearTimeout(mapState.idle);
-  if (mapState.playing || matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm")) return;
+  if (mapState.playing || motionOff()) return;
   drawPeople();
   mapState.idle = setTimeout(idle, 120);
 }
