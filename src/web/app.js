@@ -61,6 +61,7 @@ async function init() {
 
   form.addEventListener("input", () => { updateOutputs(); clearPresetSelection(); markStale(); });
   form.addEventListener("submit", (e) => { e.preventDefault(); runSimulation(); });
+  $("#mayorBtn").addEventListener("click", askMayor);
   $("#dice").addEventListener("click", () => { form.seed.value = Math.floor(Math.random() * 1e6); updateOutputs(); });
   $("#copyLink").addEventListener("click", copyLink);
   $("#runJury").addEventListener("click", runJury);
@@ -356,6 +357,57 @@ function renderResult(data, seconds) {
   renderCertificate(data, seconds);
   renderPlans(data.closure_plans);
   loadMapRun(data);
+  resetMayor();
+}
+
+// ---------- mayor's report (DeepSeek writes it; the server falls back to a template) ----------
+
+function resetMayor() {
+  $("#mayorReport").hidden = true;
+  $("#mayorReport").textContent = "";
+  $("#mayorBtn").disabled = false;
+  $("#mayorBtn").textContent = "Explícaselo al alcalde (IA)";
+}
+
+async function askMayor() {
+  const d = state.last;
+  if (!d) return;
+  const best = d.candidates[0];
+  const btn = $("#mayorBtn");
+  const box = $("#mayorReport");
+  btn.disabled = true;
+  btn.textContent = "Redactando el informe…";
+  try {
+    const report = await getJSON(`${API}/report`, {
+      strategy: best.name, r0: d.config.r0, doses_per_day: d.config.doses_per_day,
+      vaccine_efficacy: d.config.vaccine_efficacy, seed_location: d.config.seed_location,
+      runs: d.config.runs, manta_scale: d.manta_scale,
+      saved_none: d.saved_vs_none.mean, saved_none_p5: d.saved_vs_none.p5, saved_none_p95: d.saved_vs_none.p95,
+      saved_random: d.saved_vs_random.mean, win_rate: d.saved_vs_random.win_rate,
+      wasted_share: d.wasted_doses.share,
+    });
+    box.textContent = "";
+    report.text.split(/
+\s*
+/).forEach((para) => {
+      const p = document.createElement("p");
+      p.textContent = para.replace(/\*\*/g, "");
+      box.append(p);
+    });
+    const note = document.createElement("p");
+    note.className = "mayor__source";
+    note.textContent = report.source === "ai"
+      ? "Redactado por IA (DeepSeek) solo con los números de esta simulación."
+      : "La IA no respondió: este es el informe automático con los mismos números.";
+    box.append(note);
+    box.hidden = false;
+    btn.textContent = "Informe listo";
+  } catch (err) {
+    box.textContent = `No se pudo redactar el informe: ${err.message}. Inténtalo de nuevo.`;
+    box.hidden = false;
+    btn.disabled = false;
+    btn.textContent = "Reintentar el informe";
+  }
 }
 
 function renderStrip(perRun, runs) {
