@@ -37,8 +37,8 @@ class PolicyResult:
     doses_wasted: np.ndarray     # (runs,) doses given to someone not Sano
     doses_by_day: np.ndarray     # (runs, days+1)
     vaccinated_non_eligible: int  # doses given to visibly non-eligible people (must be 0)
-    bitten_day: np.ndarray       # (n,) day each agent was bitten in the first run, -1 = never
-    vaccinated_day: np.ndarray   # (n,) day each agent got a dose in the first run, -1 = never
+    bitten_day: np.ndarray       # (n,) day each agent was bitten in the first simulated run, -1 = never
+    vaccinated_day: np.ndarray   # (n,) day each agent got a dose in the first simulated run, -1 = never
 
 
 def run_stream(seed: int, run: int, purpose: int) -> np.random.Generator:
@@ -89,7 +89,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
     detected = np.zeros((runs, n), dtype=bool)
     vaccinated = np.zeros((runs, n), dtype=bool)
 
-    bitten_day = np.full(n, -1, dtype=np.int16)    # first run only (for the map)
+    bitten_day = np.full(n, -1, dtype=np.int16)    # first row of run_ids only (for the map)
     vaccinated_day = np.full(n, -1, dtype=np.int16)
 
     for row, k in enumerate(run_ids):

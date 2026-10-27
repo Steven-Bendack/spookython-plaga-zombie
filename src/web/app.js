@@ -340,6 +340,7 @@ function initMap() {
 
 function loadMapRun(data) {
   mapState.data = data;
+  $("#mapRun").textContent = `Corrida ${data.map.run}`;
   mapState.day = 0;
   prepareRun();
   const map = mapState.leaflet;

@@ -51,6 +51,15 @@ def test_map_replays_run_one_inside_manta():
         lat, lon = pts[:, 0] / 1e4, pts[:, 1] / 1e4
         assert (lat > -1.10).all() and (lat < -0.90).all()
         assert (lon > -80.90).all() and (lon < -80.60).all()
-    # Nobody bitten is vaccinated before... the map only replays doses on day >= start.
+    # The map only shows doses from the day the vaccines arrive.
     vax = np.array(out["map"]["strategy"]["vaccinated"])
     assert (vax[:, 2] >= out["config"]["vaccine_start_day"]).all()
+
+
+def test_map_replays_the_median_run_exactly():
+    out = simulate({"runs": 5, "days": 60, "population": 3000})
+    per_run = out["saved_vs_none"]["per_run"]
+    run = out["map"]["run"] - 1
+    assert sorted(per_run)[len(per_run) // 2] == per_run[run]
+    replay_saved = len(out["map"]["none"]["bitten"]) - len(out["map"]["strategy"]["bitten"])
+    assert replay_saved == per_run[run]

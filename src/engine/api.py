@@ -13,6 +13,7 @@ import numpy as np
 from .config import ENGINE_VERSION, SimConfig
 from .montecarlo import Runner, serial_runner, tournament
 from .population import BARRIO_NAMES, BARRIOS, build_city
+from .seir import simulate_policy
 from .strategies import DESCRIPTIONS, LABELS
 
 # Surprise Outbreak presets (the jury's own examples), relative to the defaults.
@@ -54,28 +55,34 @@ def simulate(request: dict, runner: Runner = serial_runner) -> dict:
         "wasted_doses": {"mean": summaries[best["name"]]["doses_wasted"],
                          "share": summaries[best["name"]]["wasted_share"]},
         "recommendation_text": recommendation_text(cfg, best),
-        "map": map_payload(cfg, result["first_runs"], best["name"]),
+        "map": map_payload(cfg, result["beta"], best),
         "elapsed_seconds": round(time.perf_counter() - started, 2),
     }
 
 
-def map_payload(cfg: SimConfig, first_runs: dict, best: str) -> dict:
-    """Run 0 of Nada, Azar and the best strategy, as points to replay on the map.
+def map_payload(cfg: SimConfig, beta: float, best: dict) -> dict:
+    """The typical run, replayed person by person for the map.
 
-    Each point is [lat, lon, day] with lat/lon as integers in 1e-4 degrees
-    (~10 m) to keep the response small; the browser divides by 10 000.
+    The typical run is the one whose people saved vs Nada is the median, so the
+    map shows neither a lucky nor an unlucky seed. It is simulated again on its
+    own (same streams, same result) for Nada, Azar and the best strategy.
+    Each point is [lat, lon, day] with lat/lon as integers in 1e-4 degrees.
     """
+    saved = np.asarray(best["vs_none"]["per_run"])
+    run = int(np.argsort(saved)[len(saved) // 2])
     city = build_city(cfg.population, cfg.city_seed)
-    coords = np.rint(city.coords * 10_000).astype(int).tolist()
+    coords = np.rint(city.coords * 10_000).astype(int)
 
-    def points(pairs):
-        return [[coords[a][0], coords[a][1], d] for a, d in (pairs or [])]
+    def points(days: np.ndarray) -> list:
+        idx = np.flatnonzero(days >= 0)
+        return np.column_stack([coords[idx], days[idx]]).tolist()
 
-    out = {"days": cfg.days, "barrios": [{"name": b[0], "lat": b[1], "lon": b[2]} for b in BARRIOS]}
-    for key, name in (("none", "none"), ("random", "random"), ("strategy", best)):
-        fr = first_runs.get(name) or {}
-        out[key] = {"label": LABELS[name], "bitten": points(fr.get("bitten")),
-                    "vaccinated": points(fr.get("vaccinated"))}
+    out = {"days": cfg.days, "run": run + 1,
+           "barrios": [{"name": b[0], "lat": b[1], "lon": b[2]} for b in BARRIOS]}
+    for key, name in (("none", "none"), ("random", "random"), ("strategy", best["name"])):
+        res = simulate_policy(city, cfg, beta, name, run_ids=[run])
+        out[key] = {"label": LABELS[name], "bitten": points(res.bitten_day),
+                    "vaccinated": points(res.vaccinated_day)}
     return out
 
 
