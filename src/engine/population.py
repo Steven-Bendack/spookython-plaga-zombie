@@ -8,8 +8,10 @@ those are separate edges and their risks multiply.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
+from pathlib import Path
 
 import numpy as np
 
@@ -96,6 +98,43 @@ class City:
 
     @cached_property
     def coords(self) -> np.ndarray:
+        """(n, 2) lat/lon of each agent's home, for the map only (contagion uses the network).
+
+        Each household gets one real point on a residential street of its barrio
+        (OpenStreetMap, see scripts/build_manta_streets.py); its members stand a
+        few meters apart there. Without that file, homes are scattered around
+        the barrio center.
+        """
+        rng = np.random.default_rng(np.random.SeedSequence([self.n, 11]))
+        homes = _street_homes()
+        if homes is None:
+            centers = np.array([(b[1], b[2]) for b in BARRIOS])[self.barrio]
+            lat = centers[:, 0] - np.abs(rng.normal(0, 0.006, self.n))
+            lon = centers[:, 1] + rng.normal(0, 0.007, self.n)
+            return np.column_stack([lat, lon])
+        n_households = int(self.household.max()) + 1
+        house = np.zeros((n_households, 2))
+        house_barrio = np.zeros(n_households, dtype=int)
+        house_barrio[self.household] = self.barrio
+        for b, points in enumerate(homes):
+            members = np.flatnonzero(house_barrio == b)
+            house[members] = points[rng.integers(0, len(points), members.size)]
+        return house[self.household] + rng.normal(0, 0.00004, (self.n, 2))  # ~4 m apart
+
+    @cached_property
+    def hub_rank(self) -> np.ndarray:
+        """Position of each agent when sorted by strength, scaled to [0, 1).
+
+        Higher = more connected. A fixed shuffle breaks ties between equals.
+        """
+        tie_break = np.random.default_rng(0).permutation(self.n)
+        order = np.lexsort((tie_break, self.strength))
+        rank = np.empty(self.n)
+        rank[order] = np.arange(self.n) / self.n
+        return rank
+
+    @cached_property
+    def coords(self) -> np.ndarray:
         """(n, 2) approximate lat/lon of each agent's home, for the map only.
 
         Homes are scattered around their barrio's center; latitude only moves
@@ -120,6 +159,18 @@ class City:
             "mean_contacts": float(self.contact_count.mean()),
             "barrios": list(BARRIO_NAMES),
         }
+
+
+@lru_cache(maxsize=1)
+def _street_homes():
+    """Possible homes along Manta's residential streets, per barrio, or None."""
+    path = Path(__file__).with_name("data") / "manta_homes.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("barrios") != list(BARRIO_NAMES):
+        return None
+    return [np.array(h, dtype=float) for h in data["homes"]]
 
 
 def build_city(n: int, city_seed: int) -> City:
