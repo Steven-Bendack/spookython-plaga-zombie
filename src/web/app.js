@@ -3,10 +3,10 @@ import * as sound from "./sound.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
-  none: "#8f8580", random: "#c9a0ff", strategy: "#a8d672", zombie: "#ff3b3b", tie: "#4a3f48",
-  bitten: "#ffc94d", gone: "#6f6480", vax: "#38e8ff", pumpkin: "#ff7518", ink: "#efe6d6", grid: "#2a2229",
+  none: "#93a4b3", random: "#c9a0ff", strategy: "#9be15d", zombie: "#ff2f3d", tie: "#34485a",
+  bitten: "#ffc23d", gone: "#5f7184", vax: "#3fd0ff", pumpkin: "#ff6a1f", ink: "#e3edf3", grid: "#1c2f3f",
 };
-const STRATEGY_COLORS = { ring_hubs: "#a8d672", ring: "#38e8ff", degree: "#ffb347", acquaintance: "#c9a0ff" };
+const STRATEGY_COLORS = { ring_hubs: "#9be15d", ring: "#3fd0ff", degree: "#ffae5e", acquaintance: "#c9a0ff" };
 const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vaccine_start_day",
   "detection_prob", "detection_delay", "initial_cases", "runs", "strategy", "seed",
   "latent_mean", "infectious_mean", "days",
@@ -30,7 +30,7 @@ const dec = (x, d = 1) => x.toFixed(d).replace(".", ",");
 if (window.Chart) {
   Chart.defaults.color = "#a89c95";
   Chart.defaults.borderColor = COLORS.grid;
-  Chart.defaults.font.family = "IBM Plex Sans";
+  Chart.defaults.font.family = "Barlow";
 }
 
 // ---------- bootstrapping ----------
@@ -217,7 +217,15 @@ function setForm(values) {
   }
 }
 
+// Range fill for WebKit (Firefox uses ::-moz-range-progress).
+function paintRange(el) {
+  const span = (+el.max || 100) - (+el.min || 0);
+  el.style.setProperty("--fill", `${(100 * (+el.value - (+el.min || 0))) / (span || 1)}%`);
+}
+document.addEventListener("input", (e) => { if (e.target.type === "range") paintRange(e.target); });
+
 function updateOutputs() {
+  document.querySelectorAll('input[type="range"]').forEach(paintRange);
   const v = readForm();
   const scale = state.meta?.manta_scale ?? 1;
   $("#r0Out").textContent = dec(v.r0, 2);
@@ -826,6 +834,7 @@ function drawPeople() {
   $("#hudVax").textContent = fmt(vax);
   $("#hudCity").textContent = pct(bittenSoFar / n);
   $("#daySlider").value = Math.floor(day);
+  paintRange($("#daySlider"));
   drawProgress(day);
   const closedToday = (run.closed && run.closed[Math.max(0, Math.min(Math.floor(day) || 0, run.closed.length - 1))]) || [0, 0];
   const badge = $("#hudClosed");
@@ -847,7 +856,7 @@ function drawPeople() {
 // Event bubbles: each headline pops up over its barrio for a few days.
 function drawBubbles(ctx, map, day, events) {
   if (map.getZoom() < 11) return;
-  ctx.font = "700 12px 'Archivo', sans-serif";
+  ctx.font = "700 13px 'Barlow Condensed', sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const placed = [];
@@ -916,16 +925,16 @@ function showBarrioCard(latlng) {
 function drawBarrioNames(ctx, map) {
   const barrios = mapState.data?.map.barrios;
   if (!barrios || map.getZoom() < 12) return;
-  ctx.font = "600 11px 'IBM Plex Mono', monospace";
+  ctx.font = "700 12px 'Barlow Condensed', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const b of barrios) {
     const pt = map.latLngToContainerPoint([b.lat, b.lon]);
     const text = b.name.toUpperCase();
     const w = ctx.measureText(text).width + 10;
-    ctx.fillStyle = "rgba(15, 12, 16, 0.78)";
+    ctx.fillStyle = "rgba(8, 20, 30, 0.82)";
     ctx.fillRect(pt.x - w / 2, pt.y - 9, w, 18);
-    ctx.fillStyle = "#efe6d6";
+    ctx.fillStyle = "#e3edf3";
     ctx.fillText(text, pt.x, pt.y + 0.5);
   }
 }
@@ -1141,7 +1150,7 @@ function chartOptions(scales, legendLabels = {}, tooltipCallbacks = {}) {
       tooltip: {
         callbacks: tooltipCallbacks, filter: (item) => !item.dataset._band,
         backgroundColor: "rgba(15, 12, 16, 0.95)", borderColor: COLORS.grid, borderWidth: 1,
-        titleFont: { family: "IBM Plex Mono", size: 12 }, bodyFont: { size: 12 }, padding: 10, boxPadding: 4,
+        titleFont: { family: "Barlow Condensed", size: 12 }, bodyFont: { size: 12 }, padding: 10, boxPadding: 4,
       },
     },
     scales: Object.fromEntries(Object.entries(scales).map(([k, v]) => [k, {
@@ -1149,7 +1158,7 @@ function chartOptions(scales, legendLabels = {}, tooltipCallbacks = {}) {
       border: { display: false },
       ...v,
       title: v.title ? { ...v.title, display: !small || k === "x", font: { size: small ? 11 : 12 } } : undefined,
-      ticks: { font: { family: "IBM Plex Mono", size: small ? 10 : 11 }, padding: 6,
+      ticks: { font: { family: "Barlow Condensed", size: small ? 10 : 11 }, padding: 6,
         ...(v.ticks || {}), maxTicksLimit: small ? 6 : (v.ticks?.maxTicksLimit ?? 10) },
     }])),
   };
