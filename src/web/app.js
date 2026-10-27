@@ -245,8 +245,15 @@ function renderPresets(presets) {
     market: () => setForm({ seed_location: "market" }),
     weak_vaccine: () => setForm({ vaccine_efficacy: 0.5 }),
   };
+  const delta = {
+    base: `R0 ${dec(d.r0)} · ${d.doses_per_day}/día`,
+    double_r0: `R0 ${dec(d.r0)} → ${dec(d.r0 * 2)}`,
+    half_doses: `${d.doses_per_day} → ${Math.max(1, Math.round(d.doses_per_day / 2))} vacunas`,
+    market: "inicio → mercado",
+    weak_vaccine: `eficacia ${pct(d.vaccine_efficacy)} → 50 %`,
+  };
   box.innerHTML = Object.entries(presets).map(([key, p]) =>
-    `<button type="button" class="chip" data-preset="${key}" aria-pressed="false">${p.label}</button>`).join("");
+    `<button type="button" class="chip" data-preset="${key}" aria-pressed="false"><span class="chip__name">${p.label}</span><span class="chip__delta">${delta[key] || ""}</span></button>`).join("");
   box.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-preset]");
     if (!btn) return;
@@ -254,7 +261,7 @@ function renderPresets(presets) {
     updateOutputs();
     clearPresetSelection();
     btn.setAttribute("aria-pressed", "true");
-    markStale(`Brote sorpresa: «${btn.textContent}». Pulsa Recomendar para ver qué hacer ahora.`);
+    markStale(`Brote sorpresa: «${btn.querySelector(".chip__name").textContent}». Pulsa Recomendar para ver qué hacer ahora.`);
   });
 }
 
@@ -387,9 +394,7 @@ async function askMayor() {
       wasted_share: d.wasted_doses.share,
     });
     box.textContent = "";
-    report.text.split(/
-\s*
-/).forEach((para) => {
+    report.text.split(/\n\s*\n/).forEach((para) => {
       const p = document.createElement("p");
       p.textContent = para.replace(/\*\*/g, "");
       box.append(p);
