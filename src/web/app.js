@@ -2,6 +2,7 @@
 import * as sound from "./sound.js";
 import { createGlobe, HANDOFF_ZOOM } from "./globe.js";
 import { ghostSVG } from "./ghost.js";
+import { humanSVG, turnedSVG, zombieSVG } from "./sprites.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -110,6 +111,9 @@ function initIntro() {
   const reduce = motionOff();
   let globe = null;
   $("#ghost").innerHTML = ghostSVG();
+  $("#spriteZombie").innerHTML = zombieSVG();
+  $("#spriteHuman").innerHTML = humanSVG();
+  $("#spriteTurned").innerHTML = turnedSVG();
   try {
     globe = createGlobe($("#globe"), { reduce, worldUrl: "data/world-110m.json" });
   } catch { /* no d3: go straight to the map */ }
@@ -492,6 +496,7 @@ async function playChallenge() {
   play.disabled = true;
   $("#chReseed").disabled = true;
   $("#chError").hidden = true;
+  showLoading("Tu plan contra el comité", `${readForm().runs} corridas por plan, con la misma suerte para los dos`);
   tick();
   const timer = setInterval(tick, 1000);
   try {
@@ -501,6 +506,7 @@ async function playChallenge() {
     $("#chError").hidden = false;
   } finally {
     clearInterval(timer);
+    hideLoading();
     play.disabled = false;
     play.textContent = "¡Juega contra el comité!";
     $("#chReseed").disabled = false;
