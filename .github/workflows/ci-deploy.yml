@@ -1,0 +1,73 @@
+# Tests on every push and pull request; production deploy to Vercel only
+# when main is green. Deploys go through scripts/deploy_vercel.sh (a clean
+# copy outside git), so commits from any teammate deploy without being blocked.
+name: CI and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install numpy pytest boto3
+      - run: python -m pytest -q
+      - name: JavaScript syntax
+        run: for f in src/web/*.js; do node --check "$f"; done
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://plaga-zombie-manta.vercel.app
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_evqxBtCdGBPYMMgzaPuEw0BI
+      VERCEL_PROJECT_ID: prj_OpClbtsVly5uvdI5sIiULgAWBLNJ
+    steps:
+      - name: Token present
+        id: token
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::VERCEL_TOKEN secret is missing; skipping deploy."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.token.outputs.ok == 'true'
+        uses: actions/checkout@v4
+      - if: steps.token.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - if: steps.token.outputs.ok == 'true'
+        run: bash scripts/deploy_vercel.sh
+      - name: Production serves this commit
+        if: steps.token.outputs.ok == 'true'
+        run: |
+          sleep 5
+          curl -fsS https://plaga-zombie-manta.vercel.app/ -o /dev/null
+          live=$(curl -fsS -X POST https://plaga-zombie-manta.vercel.app/api/simulate \
+            -H 'content-type: application/json' -d '{"seed":2026,"runs":2}' \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['certificate']['commit'])")
+          echo "live commit: $live"
+          test "$live" = "${GITHUB_SHA::12}"
