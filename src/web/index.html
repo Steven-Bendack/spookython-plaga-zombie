@@ -115,7 +115,12 @@
     <aside class="bcard ui" id="barrioCard" hidden aria-live="polite"></aside>
 
     <div class="loading" id="loading" hidden role="status">
-      <div class="loading__ring" aria-hidden="true"></div>
+      <div class="chase" aria-hidden="true">
+        <div class="chase__zombie" id="spriteZombie"></div>
+        <div class="chase__victim"><div class="chase__human" id="spriteHuman"></div><div class="chase__turned" id="spriteTurned"></div></div>
+        <span class="chase__bite">¡ÑAM!</span>
+        <div class="chase__ground"></div>
+      </div>
       <p class="loading__title">Simulando la plaga</p>
       <p class="loading__text" id="loadingText">Corriendo todas las estrategias con la misma semilla…</p>
     </div>
