@@ -16,7 +16,7 @@ const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vac
 const CHECKBOXES = new Set(["close_market", "close_schools"]);
 const MANTA = [-0.9677, -80.7089];
 const CITY = [-0.975, -80.735];   // where the camera lands
-const SHEETS = ["curves", "table", "real", "jury"];
+const SHEETS = ["curves", "table", "real", "jury", "challenge"];
 
 const $ = (sel) => document.querySelector(sel);
 const form = $("#form");
@@ -58,6 +58,7 @@ async function init() {
   fillSelect($("#seedLocation"), meta.seed_locations);
   fillSelect($("#strategy"), [{ value: "auto", label: "Automática (torneo)" }, ...meta.strategies]);
   renderPresets(meta.presets);
+  initChallenge(meta);
 
   const fromUrl = Object.fromEntries(new URLSearchParams(location.search));
   setForm({ ...meta.defaults, ...fromUrl });
@@ -204,7 +205,7 @@ function openPanel(name) {
   });
   el.classList.add("is-open");
   el.inert = false;
-  const btn = document.querySelector(`.dock__btn[data-panel="${name}"]`);
+  const btn = document.querySelector(`#dock [data-panel="${name}"]`);
   btn?.setAttribute("aria-pressed", "true");
   btn?.classList.remove("has-news");
 }
@@ -214,7 +215,7 @@ function closePanel(name) {
   if (!el) return;
   el.classList.remove("is-open");
   el.inert = true;
-  document.querySelector(`.dock__btn[data-panel="${name}"]`)?.setAttribute("aria-pressed", "false");
+  document.querySelector(`#dock [data-panel="${name}"]`)?.setAttribute("aria-pressed", "false");
 }
 
 function togglePanel(name) {
@@ -303,6 +304,7 @@ function updateOutputs() {
   $("#mktCost").textContent = fmt(v.market_cost);
   $("#schCost").textContent = fmt(v.school_cost);
   showInstantAnswer(v);
+  $("#chDoses").textContent = `${v.doses_per_day} vacunas por día desde el día ${v.vaccine_start_day}`;
 }
 
 function renderPresets(presets) {
@@ -441,6 +443,110 @@ function renderResult(data, seconds) {
   renderPlans(data.closure_plans);
   loadMapRun(data);
   resetMayor();
+}
+
+// ---------- «¿Le ganas al comité?»: the player's plan against the committee's algorithm ----------
+
+const challenge = { plan: [], max: 3 };
+
+function initChallenge(meta) {
+  challenge.max = meta.player_max_groups;
+  $("#chGroups").innerHTML = meta.player_groups.map((g) =>
+    `<button type="button" class="chip chip--group" data-group="${g.value}" aria-pressed="false"><span class="chip__name">${g.label}</span><span class="chip__rank"></span></button>`).join("");
+  $("#chGroups").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-group]");
+    if (btn) togglePlanGroup(btn.dataset.group);
+  });
+  $("#chPlay").addEventListener("click", playChallenge);
+  $("#chReseed").addEventListener("click", () => {
+    form.seed.value = Math.floor(Math.random() * 1e6);
+    updateOutputs();
+    markStale();
+    playChallenge();
+  });
+}
+
+function togglePlanGroup(group) {
+  const plan = challenge.plan;
+  const at = plan.indexOf(group);
+  if (at >= 0) plan.splice(at, 1);
+  else if (plan.length < challenge.max) plan.push(group);
+  else plan[plan.length - 1] = group;  // full: the new pick replaces the last one
+  document.querySelectorAll("#chGroups [data-group]").forEach((btn) => {
+    const rank = plan.indexOf(btn.dataset.group);
+    btn.setAttribute("aria-pressed", String(rank >= 0));
+    btn.querySelector(".chip__rank").textContent = rank >= 0 ? rank + 1 : "";
+  });
+  const names = plan.map((g, i) => `${i + 1}. ${$(`#chGroups [data-group="${CSS.escape(g)}"] .chip__name`).textContent}`);
+  $("#chPlan").textContent = plan.length
+    ? `Tu plan: ${names.join(" → ")}. Si sobran dosis, al azar.`
+    : "Toca un grupo para empezar tu plan.";
+  $("#chPlay").disabled = plan.length === 0;
+}
+
+async function playChallenge() {
+  if (!challenge.plan.length) return;
+  const play = $("#chPlay");
+  const started = performance.now();
+  const tick = () => { play.textContent = `El comité está jugando… ${Math.round((performance.now() - started) / 1000)} s`; };
+  play.disabled = true;
+  $("#chReseed").disabled = true;
+  $("#chError").hidden = true;
+  tick();
+  const timer = setInterval(tick, 1000);
+  try {
+    renderChallenge(await getJSON(`${API}/challenge`, { ...readForm(), plan: challenge.plan }));
+  } catch (err) {
+    $("#chError").textContent = `No se pudo jugar: ${err.message}. Revisa las condiciones e inténtalo de nuevo.`;
+    $("#chError").hidden = false;
+  } finally {
+    clearInterval(timer);
+    play.disabled = false;
+    play.textContent = "¡Juega contra el comité!";
+    $("#chReseed").disabled = false;
+  }
+}
+
+function renderChallenge(d) {
+  const runs = d.config.runs;
+  $("#chResult").hidden = false;
+  $("#chYou").textContent = fmt(d.player.vs_none.mean);
+  $("#chThem").textContent = fmt(d.committee.vs_none.mean);
+  $("#chYouPlan").textContent = d.player.label;
+  $("#chThemPlan").textContent = d.committee.label;
+  $(".score").classList.toggle("is-you", d.player_wins);
+  $(".score").classList.toggle("is-committee", !d.player_wins);
+  $("#chVerdict").textContent = d.verdict_text;
+  // committee_vs_player > 0: the committee saved more in that run.
+  const perRun = d.committee_vs_player.per_run;
+  const wins = perRun.filter((x) => x < 0).length;
+  $("#chStripTitle").textContent = `Semilla por semilla: ganas en ${wins} de ${runs}`;
+  $("#chStrip").setAttribute("aria-label", `Ganas en ${wins} de ${runs} corridas`);
+  $("#chStrip").innerHTML = perRun.map((x, i) => {
+    const cls = x < 0 ? "win" : x > 0 ? "loss" : "tie";
+    return `<span class="tick tick--${cls}" style="animation-delay:${Math.min(i * 6, 600)}ms" title="Corrida ${i + 1}: el comité ${x >= 0 ? "+" : ""}${x}"></span>`;
+  }).join("");
+  $("#chSeed").textContent = `Semilla ${d.config.seed} · ${runs} corridas por plan · misma suerte para todos`;
+  const days = d.curves.none.map((_, i) => i);
+  const line = (label, data, color, width = 2) => ({ label, data, borderColor: color, borderWidth: width, pointRadius: 0, tension: 0.3, fill: false });
+  drawChart("chChart", {
+    type: "line",
+    data: {
+      labels: days,
+      datasets: [
+        line("Nada", d.curves.none, COLORS.none),
+        line("Azar", d.curves.random, COLORS.random),
+        line(`Comité: ${d.committee.label}`, d.committee.summary.curves.I, COLORS.strategy, 3),
+        line("Tu plan", d.player.summary.curves.I, COLORS.pumpkin, 3),
+      ],
+    },
+    options: chartOptions({
+      x: { title: { display: true, text: "Día" }, ticks: { maxTicksLimit: 10 } },
+      y: { title: { display: true, text: "Zombies" }, beginAtZero: true },
+    }),
+  });
+  if (d.player_wins) sound.bite();
+  $("#chResult").scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
 }
 
 // ---------- mayor's report (DeepSeek writes it; the server falls back to a template) ----------
