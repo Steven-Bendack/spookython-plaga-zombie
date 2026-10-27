@@ -59,7 +59,7 @@ async function init() {
   renderReal(real);
   renderScenarios(scenarios);
 
-  form.addEventListener("input", () => { updateOutputs(); clearPresetSelection(); });
+  form.addEventListener("input", () => { updateOutputs(); clearPresetSelection(); markStale(); });
   form.addEventListener("submit", (e) => { e.preventDefault(); runSimulation(); });
   $("#dice").addEventListener("click", () => { form.seed.value = Math.floor(Math.random() * 1e6); updateOutputs(); });
   $("#copyLink").addEventListener("click", copyLink);
@@ -253,6 +253,7 @@ function renderPresets(presets) {
     updateOutputs();
     clearPresetSelection();
     btn.setAttribute("aria-pressed", "true");
+    markStale(`Brote sorpresa: «${btn.textContent}». Pulsa Recomendar para ver qué hacer ahora.`);
   });
 }
 
@@ -291,23 +292,47 @@ function labelOf(name) {
 
 // ---------- simulation ----------
 
+// The verdict on screen no longer matches the form: say so instead of showing an old answer as current.
+function markStale(text = "Cambiaste las condiciones. Pulsa Recomendar para actualizar la respuesta.") {
+  $("#runHint").textContent = text;
+  if (!state.last) return;
+  [$("#run"), $(".mobile-run .btn")].forEach((b) => { if (!b.disabled) b.textContent = "Recomendar con el cambio"; });
+  $("#verdict").classList.add("is-stale");
+  $("#staleNote").hidden = false;
+  $("#staleNote").textContent = text;
+}
+
 async function runSimulation() {
-  const btn = $("#run");
-  btn.disabled = true;
-  btn.textContent = "Corriendo las simulaciones…";
-  $("#results").classList.add("is-loading");
+  const buttons = [$("#run"), $(".mobile-run .btn")];
+  const results = $("#results");
   const started = performance.now();
+  const label = () => `Simulando… ${Math.round((performance.now() - started) / 1000)} s`;
+  buttons.forEach((b) => { b.disabled = true; b.textContent = label(); });
+  const timer = setInterval(() => buttons.forEach((b) => { b.textContent = label(); }), 1000);
+  results.classList.add("is-loading");
+  results.setAttribute("aria-busy", "true");
+  $("#runError").hidden = true;
+  $("#runHint").textContent = "Corriendo todas las estrategias con la misma semilla. Suele tardar menos de un minuto.";
   try {
     const data = await getJSON(`${API}/simulate`, readForm());
     state.last = data;
     renderResult(data, (performance.now() - started) / 1000);
     history.replaceState(null, "", `?${new URLSearchParams(readForm())}`);
+    $("#verdict").classList.remove("is-stale");
+    $("#staleNote").hidden = true;
+    $("#runHint").textContent = "Corre todas las estrategias con la misma semilla y recomienda la que más salva.";
+    $("#verdict").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#bestName").focus({ preventScroll: true });
   } catch (err) {
-    $("#runHint").textContent = `No se pudo simular: ${err.message}. Revisa los valores e inténtalo de nuevo.`;
+    const msg = `No se pudo simular: ${err.message}. Revisa los valores e inténtalo de nuevo.`;
+    $("#runHint").textContent = msg;
+    $("#runError").textContent = msg;
+    $("#runError").hidden = false;
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Recomendar";
-    $("#results").classList.remove("is-loading");
+    clearInterval(timer);
+    buttons.forEach((b) => { b.disabled = false; b.textContent = "Recomendar"; });
+    results.classList.remove("is-loading");
+    results.removeAttribute("aria-busy");
   }
 }
 

@@ -71,7 +71,7 @@
     <aside class="panel controls" aria-label="Condiciones del brote">
       <section class="controls__block">
         <h2 class="controls__title">Brote sorpresa</h2>
-        <p class="hint">Un toque aplica el cambio que pide el jurado.</p>
+        <p class="hint">Toca el cambio que pide el jurado y luego pulsa <strong>Recomendar</strong>.</p>
         <div class="presets" id="presets"></div>
       </section>
 
@@ -181,13 +181,15 @@
     <!-- Results -->
     <main class="results" id="results" aria-live="polite">
       <section class="panel verdict" id="verdict">
+        <p class="verdict__error" id="runError" role="alert" hidden></p>
+        <p class="verdict__stale" id="staleNote" role="status" hidden></p>
         <div class="verdict__empty" id="empty">
           <p class="eyebrow">Sin resultados todavía</p>
           <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. Después el mapa repite el brote calle por calle.</p>
         </div>
         <div class="verdict__body" id="verdictBody" hidden>
           <p class="eyebrow">El comité recomienda</p>
-          <h2 class="verdict__name" id="bestName"></h2>
+          <h2 class="verdict__name" id="bestName" tabindex="-1"></h2>
           <p class="verdict__text" id="recText"></p>
           <div class="figures">
             <div class="figure">

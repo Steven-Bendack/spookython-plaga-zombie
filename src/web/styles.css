@@ -337,6 +337,11 @@ input[type="number"], select {
 .site-footer { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 10px 16px 30px; color: var(--ink-soft); font-size: 12px; }
 
 .is-loading { opacity: .55; transition: opacity .2s; }
+.verdict__error, .verdict__stale { margin: 0 0 16px; padding: 10px 12px; font-size: 14px; border-left: 3px solid; }
+.verdict__error { border-color: var(--blood, #ff3b3b); color: #ffd6d6; background: rgba(255, 59, 59, .1); }
+.verdict__stale { border-color: var(--pumpkin); color: var(--ink, #f3e9da); background: rgba(255, 122, 26, .1); }
+.verdict.is-stale .verdict__body { opacity: .45; }
+.verdict__name:focus { outline: none; }
 
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; }
