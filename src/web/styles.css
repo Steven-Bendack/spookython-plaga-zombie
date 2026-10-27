@@ -946,3 +946,56 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 @keyframes alarm { 50% { opacity: .35; } }
 .btn--primary:not([disabled]):not(.btn--run) { animation: ember 2.4s ease-in-out infinite; }
 @keyframes ember { 50% { box-shadow: 0 0 18px rgba(255, 117, 24, .55); } }
+
+/* Livelier dock: entrance, hover lift, shine, idle pulses. All of it is switched off by body.calm. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes shine { from { transform: translateX(-120%) skewX(-20deg); } to { transform: translateX(260%) skewX(-20deg); } }
+@keyframes icon-pop { 0% { transform: scale(1); } 40% { transform: scale(1.25) rotate(-8deg); } 70% { transform: scale(.95) rotate(4deg); } 100% { transform: none; } }
+@keyframes play-breathe { 50% { box-shadow: 0 0 0 6px rgba(255, 106, 31, .18), 0 0 16px rgba(255, 106, 31, .55); } }
+@keyframes rec-blink { 50% { opacity: .2; } }
+@keyframes float-glow { 50% { transform: translateY(-2px); box-shadow: inset 0 -2px 0 #160a26, 0 0 22px rgba(170, 110, 255, .7); } }
+@keyframes busy-stripes { to { background-position: 40px 0; } }
+@keyframes stat-throb { 50% { border-color: rgba(255, 59, 59, .9); box-shadow: 0 0 14px rgba(255, 59, 59, .45); } }
+
+.dock__nav .dock__btn, .map-hud > div, .map-controls > *, .dock__run > * { animation: rise-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+.dock__nav .dock__btn:nth-child(2) { animation-delay: .05s; } .dock__nav .dock__btn:nth-child(3) { animation-delay: .1s; }
+.dock__nav .dock__btn:nth-child(4) { animation-delay: .15s; } .dock__nav .dock__btn:nth-child(5) { animation-delay: .2s; }
+.dock__nav .dock__btn:nth-child(6) { animation-delay: .25s; }
+.map-hud > div:nth-child(2) { animation-delay: .1s; } .map-hud > div:nth-child(3) { animation-delay: .15s; }
+.map-hud > div:nth-child(4) { animation-delay: .2s; } .map-hud > div:nth-child(5) { animation-delay: .25s; }
+.dock__run > * { animation-delay: .3s; }
+
+.dock__btn, .speed__btn, .icon-btn, .btn--challenge { position: relative; overflow: hidden; }
+.dock__btn::after, .btn--challenge::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent); transform: translateX(-120%) skewX(-20deg);
+}
+.dock__btn:hover::after { animation: shine .6s ease-out; }
+.dock__btn { transition: color .15s, border-color .15s, background .15s, transform .15s cubic-bezier(.3, 1.6, .5, 1), box-shadow .15s; }
+.dock__btn:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(255, 106, 31, .25); }
+.dock__btn:hover svg, .dock__btn[aria-pressed="true"] svg { animation: icon-pop .45s ease-out; }
+.dock__btn:active { transform: translateY(1px) scale(.97); box-shadow: none; }
+
+.speed__btn { transition: color .15s, background .15s, transform .15s cubic-bezier(.3, 1.6, .5, 1); }
+.speed__btn:hover { transform: translateY(-2px); }
+.speed__btn[aria-pressed="true"] { animation: icon-pop .4s ease-out; }
+.icon-btn { transition: transform .15s cubic-bezier(.3, 1.6, .5, 1), filter .15s; }
+.icon-btn:hover:not([disabled]) { transform: translateY(-2px) scale(1.06); }
+.icon-btn:active:not([disabled]) { transform: scale(.94); }
+.icon-btn--play[aria-label="Reproducir"]:not([disabled]) { animation: play-breathe 1.8s ease-in-out infinite; }
+.icon-btn--cam[aria-pressed="true"]::before {
+  content: ""; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--blood); animation: rec-blink 1.2s steps(2, jump-none) infinite;
+}
+
+.btn--challenge { animation: float-glow 2.6s ease-in-out infinite; }
+.btn--challenge::after { animation: shine 3.2s ease-in-out infinite 1s; }
+.btn--challenge:hover { transform: translateY(-2px) scale(1.02); }
+
+.btn--run[disabled] {
+  background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, .18) 0 10px, transparent 10px 20px), linear-gradient(180deg, #ff8a45, var(--pumpkin));
+  background-size: 40px 40px, auto; animation: busy-stripes .8s linear infinite;
+}
+
+.game.is-alarm .hud__stat--zombie { animation: stat-throb 1.1s ease-in-out infinite; }
+.map-hud strong { transition: color .2s; }
