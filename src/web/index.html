@@ -7,7 +7,7 @@
   <meta name="description" content="Comité de Contención de Manta: simula la plaga sobre el mapa de la ciudad, compara estrategias de vacunación contra no hacer nada y contra el azar, y pon a prueba la recomendación.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Creepster&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Creepster&family=Pixelify+Sans:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="assets/mineral-halloween.svg" type="image/svg+xml">
@@ -17,6 +17,13 @@
   <div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
     <canvas class="intro__globe" id="globe" aria-hidden="true"></canvas>
     <div class="intro__content" id="introContent">
+      <div class="spooky" aria-label="SpookyThon 2026">
+        <div class="spooky__ghost" id="ghost"></div>
+        <div class="spooky__text">
+          <p class="spooky__title">SpookyThon</p>
+          <p class="spooky__year">2026</p>
+        </div>
+      </div>
       <p class="eyebrow">Manta · Comité de Contención</p>
       <h1 class="intro__title" id="introTitle">La Plaga Zombie</h1>
       <p class="intro__text">Algo muerde en Manta. Hay pocas vacunas y cada día cuenta.<br>Tú decides a quién se las ponemos.</p>
