@@ -935,3 +935,14 @@ body { overflow: hidden; background: #000; }
 @keyframes run { 50% { transform: translateY(-3px); } }
 @keyframes shamble { 50% { transform: translateY(-1px) rotate(-3deg); } }
 body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
+
+/* Game feel (from Carlo's Halloween branch): live meters, map alarm glow, glowing main button */
+.hud__bar b { transition: width .35s ease-out; }
+.hud__stat--zombie .hud__bar b { box-shadow: 0 0 8px var(--blood); }
+.game.is-alarm::after {
+  content: ""; position: absolute; inset: 0; z-index: 460; pointer-events: none;
+  box-shadow: inset 0 0 90px rgba(255, 59, 59, .45); animation: alarm 1.6s ease-in-out infinite;
+}
+@keyframes alarm { 50% { opacity: .35; } }
+.btn--primary:not([disabled]):not(.btn--run) { animation: ember 2.4s ease-in-out infinite; }
+@keyframes ember { 50% { box-shadow: 0 0 18px rgba(255, 117, 24, .55); } }

@@ -1202,6 +1202,7 @@ function drawPeople() {
 
   const n = (split ? split.data : mapState.data).config.population;
   $("#barZombies").style.width = `${Math.min(100, (100 * zombies) / mapState.peakZombies)}%`;
+  $("#game").classList.toggle("is-alarm", zombies > 0.5 * mapState.peakZombies);
   $("#barBitten").style.width = `${(100 * bittenSoFar) / n}%`;
   $("#barVax").style.width = `${(100 * vax) / n}%`;
   $("#hudDay").textContent = Math.max(0, Math.floor(day));
