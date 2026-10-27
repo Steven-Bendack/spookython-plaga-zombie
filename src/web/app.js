@@ -1010,6 +1010,7 @@ async function arrival(token) {
   }
   if (!cancelled()) {
     mapState.actors = mapState.actors.filter((x) => x.kind !== "car");  // the passenger gets out
+    mapState.actors = mapState.actors.filter((x) => x.kind !== "car");  // the passenger gets out
     mapState.day = 0.4;  // the bite: patient zero and the first cases appear
     ticker(`Día 0: el pasajero muerde a alguien en ${barrio}. Nace el paciente cero. Nadie lo sabe todavía.`);
     sound.bite();
