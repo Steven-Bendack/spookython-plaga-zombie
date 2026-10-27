@@ -435,6 +435,11 @@ function renderResult(data, seconds) {
   $("#verdictBody").hidden = false;
   $("#bestName").textContent = best.label;
   $("#recText").textContent = data.recommendation_text;
+  // Vaccines alone fall short: the committee's closure advice goes right into the verdict.
+  const cp = data.closure_plans;
+  const closeAdvice = cp?.auto && cp.best !== cp.plans[0].label;
+  $("#recClosures").hidden = !closeAdvice;
+  if (closeAdvice) $("#recClosures").textContent = cp.text;
   $("#savedNone").textContent = fmt(data.saved_vs_none.mean);
   $("#savedNoneRange").textContent = `90 % de las corridas: ${fmt(data.saved_vs_none.p5)} a ${fmt(data.saved_vs_none.p95)}`;
   $("#savedRandom").textContent = fmt(data.saved_vs_random.mean);
@@ -911,23 +916,49 @@ function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
 // Ways into the city. The market is next to the port, schools fill up from the buses on the road,
 // and anywhere else the seed picks the way in, so the same link always shows the same arrival.
 const ENTRIES = [
-  { kind: "plane", at: [-0.9460, -80.6788], from: [-0.80, -80.95], text: "en avión al aeropuerto Eloy Alfaro" },
-  { kind: "ship", at: [-0.9335, -80.7160], from: [-0.83, -80.80], text: "en barco al puerto de Manta" },
+  { kind: "plane", at: [-0.9469, -80.6795], from: [-0.80, -80.95], text: "en avión al aeropuerto Eloy Alfaro" },
+  { kind: "ship", at: [-0.9361, -80.7236], from: [-0.84, -80.79], text: "en barco al puerto de Manta" },
   { kind: "car", at: [-0.9930, -80.6620], from: [-1.06, -80.55], text: "en carro por la vía a Portoviejo" },
 ];
 
 const VEHICLES = {
   plane: '<svg viewBox="0 0 48 48"><path d="M44 24c0-1.6-1.4-2.6-3-2.6H30L19 6h-4l5.5 15.4H11L7 16H4l2.5 8L4 32h3l4-5.4h9.5L15 42h4l11-15.4h11c1.6 0 3-1 3-2.6z"/></svg>',
   ship: '<svg viewBox="0 0 48 48"><path d="M6 30h36l-5 9H11z"/><path d="M12 30V21h24v9z" opacity=".85"/><path d="M18 21v-7h8v7zM28 21v-5h5v5z"/></svg>',
+  // An infected traveller who walks from the port, airport or road to patient zero.
+  walker: '<svg viewBox="0 0 48 48"><circle cx="25" cy="8" r="5"/><path d="M21 15h8l3 13h-4l-1 7 5 10h-5l-4-9-3 9h-5l4-12 0-9-4 5-4-3z"/><path d="M29 16l9 6-2 3-8-4z"/></svg>',
   car: '<svg viewBox="0 0 48 48"><path d="M8 30v-6l5-8h18l7 8h3c2 0 3 1 3 3v3z"/><circle cx="15" cy="32" r="4.5"/><circle cx="35" cy="32" r="4.5"/><path d="M16 18h6v6h-9zM25 18h5l5 6H25z" fill="#cfe9ff"/></svg>',
 };
 
 function arrivalFor(run, cfg) {
-  const zero = run.bitten.find((p) => p[2] === 0) || run.bitten[0];
-  if (!zero) return null;
+  const day0 = run.bitten.filter((p) => p[2] === 0);
+  if (!day0.length) return null;
   const byPlace = { market: "ship", school: "car" }[cfg.seed_location];
-  const kind = byPlace || ["plane", "ship", "car"][Math.abs(cfg.seed) % 3];
-  return { entry: ENTRIES.find((e) => e.kind === kind), zero: [zero[0], zero[1]] };
+  const entry = ENTRIES.find((e) => e.kind === (byPlace || ["plane", "ship", "car"][Math.abs(cfg.seed) % 3]));
+  // The traveller walks to the first case closest to where they arrived.
+  const d = (p) => (p[0] - entry.at[0]) ** 2 + (p[1] - entry.at[1]) ** 2;
+  const zero = day0.reduce((a, b) => (d(b) < d(a) ? b : a));
+  return { entry, zero: [zero[0], zero[1]] };
+}
+
+// Frames the trip in the part of the map that no panel covers.
+function fitTrip(bounds) {
+  const map = mapState.leaflet;
+  const box = map.getContainer().getBoundingClientRect();
+  const covered = (sel) => { const r = $(sel)?.getBoundingClientRect(); return r && r.width ? r : null; };
+  const dock = covered("#dock");
+  const open = (sel) => { const r = covered(`${sel}.is-open`); return r && r.width < box.width * 0.6 ? r : null; };
+  const leftDrawer = open(".drawer--left");
+  const rightDrawer = open(".drawer--right");
+  const top = (covered(".topbar")?.bottom ?? 80) - box.top + 30;
+  const bottom = dock ? box.bottom - dock.top + 30 : 40;
+  const left = leftDrawer ? leftDrawer.right - box.left + 30 : 40;
+  const right = rightDrawer ? box.right - rightDrawer.left + 30 : 40;
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(timer); map.off("moveend", done); resolve(); };
+    const timer = setTimeout(done, 1400);
+    map.once("moveend", done);
+    map.flyToBounds(bounds, { paddingTopLeft: [left, top], paddingBottomRight: [right, bottom], maxZoom: 14, duration: 1 });
+  });
 }
 
 // Moves a vehicle along a short path, then draws the trail to patient zero.
@@ -936,24 +967,23 @@ async function arrival(token) {
   if (!plan) return;
   const map = mapState.leaflet;
   const { entry, zero } = plan;
-  const icon = L.divIcon({ className: "", iconSize: [44, 44], iconAnchor: [22, 22],
-    html: `<div class="vehicle vehicle--${entry.kind}"><div class="vehicle__body">${VEHICLES[entry.kind]}</div></div>` });
-  const marker = L.marker(entry.from, { icon, interactive: false, keyboard: false }).addTo(map);
+  const iconFor = (kind) => L.divIcon({ className: "", iconSize: [44, 44], iconAnchor: [22, 22],
+    html: `<div class="vehicle vehicle--${kind}"><div class="vehicle__body">${VEHICLES[kind]}</div></div>` });
+  const marker = L.marker(entry.from, { icon: iconFor(entry.kind), interactive: false, keyboard: false }).addTo(map);
   const trail = L.polyline([entry.from], { color: "#ff3b3b", weight: 3, dashArray: "6 8", opacity: 0.85, interactive: false }).addTo(map);
   // The ticker is redrawn every frame, so the caption rides on the vehicle.
   marker.bindTooltip(`La plaga llega ${entry.text}`, { permanent: true, direction: "top", offset: [0, -20], className: "vehicle-label" }).openTooltip();
   try {
     // Frame the whole trip on any screen: phones need a lower zoom than desktops.
-    const trip = L.latLngBounds([entry.from, entry.at, zero]);
-    await flyAndWait(trip.getCenter(), Math.min(13, map.getBoundsZoom(trip, false, L.point(60, 160))), 1);
-    const legs = [[entry.from, entry.at, 2200], [entry.at, zero, 900]];
+    await fitTrip(L.latLngBounds([entry.from, entry.at, zero]));
+    const legs = [[entry.from, entry.at, 2200], [entry.at, zero, 1800]];
     for (const [a, b, ms] of legs) {
       const el = marker.getElement()?.querySelector(".vehicle__body");
       const pa = map.latLngToContainerPoint(a);
       const pb = map.latLngToContainerPoint(b);
       const angle = (Math.atan2(pb.y - pa.y, pb.x - pa.x) * 180) / Math.PI;
-      // The plane turns with its heading; ship and car only face left or right.
-      if (el) el.style.transform = entry.kind === "plane" ? `rotate(${angle}deg)` : (pb.x < pa.x ? "scaleX(-1)" : "");
+      // The plane turns with its heading; ship, car and walker only face left or right.
+      if (el) el.style.transform = a === entry.from && entry.kind === "plane" ? `rotate(${angle}deg)` : (pb.x < pa.x ? "scaleX(-1)" : "");
       const t0 = performance.now();
       while (token === mapState.playToken) {
         const t = Math.min(1, (performance.now() - t0) / ms);
@@ -967,8 +997,13 @@ async function arrival(token) {
       }
       if (token !== mapState.playToken) return;
       if (a === entry.from) {
+        // The vehicle stays at its port, airport or road; an infected person walks on over land.
         marker.getElement()?.querySelector(".vehicle")?.classList.add("is-landed");
         sound.bite();
+        await wait(600);
+        if (token !== mapState.playToken) return;
+        marker.setIcon(iconFor("walker"));
+        marker.setTooltipContent("Un pasajero infectado camina hacia la ciudad");
       }
     }
     await wait(500);

@@ -1012,3 +1012,12 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 .vehicle.is-landed { animation: vehicle-land .9s ease-out forwards; }
 .leaflet-tooltip.vehicle-label { font: 700 13px var(--display); letter-spacing: .04em; color: #fff; background: rgba(60, 6, 10, .92); border: 1px solid var(--blood); box-shadow: 0 0 12px rgba(255, 59, 59, .5); }
 .leaflet-tooltip.vehicle-label::before { border-top-color: var(--blood); }
+
+/* Closure advice inside the verdict when vaccines alone fall short */
+.verdict__alert {
+  margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--pumpkin); border-radius: 2px;
+  background: rgba(255, 106, 31, .12); color: var(--ink); font-weight: 600; line-height: 1.35;
+  animation: rise-in .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes walk { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-3px) rotate(6deg); } }
+.vehicle--walker svg { fill: #7dff6a; animation: walk .45s ease-in-out infinite; }

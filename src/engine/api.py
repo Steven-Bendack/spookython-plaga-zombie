@@ -36,8 +36,15 @@ def simulate(request: dict, runner: Runner = serial_runner) -> dict:
     best = result["ranking"][0]
     summaries = result["summaries"]
     wants_plans = cfg.close_market or cfg.close_schools or cfg.budget > 0
-    plans = (closure_plans(cfg, best["name"], result["runs"], runner)
-             if request.get("compare_plans", wants_plans) else None)
+    # When vaccines alone barely beat Azar, the committee also tries closures on its own.
+    weak = vaccines_fall_short(best["vs_random"])
+    plan_cfg = cfg if cfg.budget > 0 or not weak else replace(cfg, budget=vaccine_budget(cfg))
+    plans = (closure_plans(plan_cfg, best["name"], result["runs"], runner)
+             if request.get("compare_plans", wants_plans or weak) else None)
+    if plans is not None:
+        plans["auto"] = weak and not wants_plans
+        if plans["auto"]:
+            plans["text"] = "Aquí las vacunas solas casi no le ganan al azar, así que el comité probó cierres. " + plans["text"]
     return {
         "config": cfg.to_dict(),
         "certificate": certificate(cfg),
@@ -133,6 +140,17 @@ def challenge_text(cfg: SimConfig, out: dict) -> str:
 
 
 PLAN_RUNS = 40  # runs per closure plan (paired with the first runs of "Nada")
+WEAK_WIN_RATE = 0.9   # vaccines win against Azar in fewer seeds than this...
+WEAK_SAVED = 100      # ...or avoid fewer infections than this beyond Azar (agents)
+
+
+def vaccines_fall_short(vs_random: dict) -> bool:
+    return vs_random["win_rate"] < WEAK_WIN_RATE or vs_random["mean"] < WEAK_SAVED
+
+
+def vaccine_budget(cfg: SimConfig) -> float:
+    """What the vaccines alone could spend: closures must come out of the same money."""
+    return float(cfg.doses_per_day * max(0, cfg.days - cfg.vaccine_start_day))
 
 PLAN_LABELS = {
     (False, False): "Solo vacunas",
