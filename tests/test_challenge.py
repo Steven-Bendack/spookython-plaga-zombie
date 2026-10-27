@@ -53,3 +53,16 @@ def test_challenge_is_reproducible_and_paired():
     saved_theirs = np.array(a["committee"]["vs_none"]["per_run"])
     assert (np.array(gap["per_run"]) == saved_theirs - saved_mine).all()
     assert a["verdict_text"]
+
+
+def test_challenge_map_replays_the_typical_duel_for_both_sides():
+    out = challenge({**BASE, "plan": ["elders"]})
+    m = out["map"]
+    gap = sorted(out["committee_vs_player"]["per_run"])
+    assert 1 <= m["run"] <= BASE["runs"]
+    assert out["committee_vs_player"]["per_run"][m["run"] - 1] == gap[len(gap) // 2]
+    for side in ("player", "committee"):
+        assert len(m[side]["counts"]) == BASE["days"] + 1
+    # The replays use the same streams as the batch: their gap is that run's gap.
+    replay_gap = len(m["player"]["bitten"]) - len(m["committee"]["bitten"])
+    assert replay_gap == out["committee_vs_player"]["per_run"][m["run"] - 1]
