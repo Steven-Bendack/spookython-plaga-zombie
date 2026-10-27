@@ -123,6 +123,9 @@ Resources:
         Simulate:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/simulate }
+        Challenge:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/challenge }
         Report:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/report }

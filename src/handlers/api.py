@@ -3,6 +3,7 @@
 Routes (CloudFront forwards /api/* here):
     GET  /api/meta              defaults, presets and city facts
     POST /api/simulate          tournament; chunks fan out to the worker Lambda
+    POST /api/challenge         «¿Le ganas al comité?»: the player's plan vs the committee
     POST /api/report            mayor's report written by DeepSeek (template fallback)
     POST /api/jobs              start a big Monte Carlo job (Step Functions Distributed Map)
     GET  /api/jobs/{id}         job status and, when done, its report
@@ -18,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 
-from engine.api import meta, simulate
+from engine.api import challenge, meta, simulate
 from engine.config import SimConfig
 from engine.mayor import mayor_report
 
@@ -57,6 +58,10 @@ def handler(event, _context):
             body = _body(event)
             body["runs"] = min(int(body.get("runs", 100)), MAX_INTERACTIVE_RUNS)
             return _ok(simulate(body, lambda_runner))
+        if method == "POST" and path.endswith("/api/challenge"):
+            body = _body(event)
+            body["runs"] = min(int(body.get("runs", 100)), MAX_INTERACTIVE_RUNS)
+            return _ok(challenge(body, lambda_runner))
         if method == "POST" and path.endswith("/api/report"):
             return _ok(mayor_report(_body(event)))
         if method == "POST" and path.endswith("/api/jobs"):

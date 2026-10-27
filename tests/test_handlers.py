@@ -32,6 +32,15 @@ def test_simulate_route_caps_runs(api, monkeypatch):
     assert res["statusCode"] == 200 and body["config"]["runs"] == 3
 
 
+def test_challenge_route_caps_runs_and_rejects_bad_plans(api, monkeypatch):
+    monkeypatch.setattr(api, "MAX_INTERACTIVE_RUNS", 3)
+    body = {"runs": 999, "population": 2000, "days": 30, "plan": ["students"]}
+    res = api.handler(_event("POST", "/api/challenge", body), None)
+    assert res["statusCode"] == 200 and json.loads(res["body"])["config"]["runs"] == 3
+    bad = api.handler(_event("POST", "/api/challenge", {**body, "plan": ["aliens"]}), None)
+    assert bad["statusCode"] == 400
+
+
 def test_bad_json_is_a_400(api):
     res = api.handler({"requestContext": {"http": {"method": "POST"}}, "rawPath": "/api/simulate",
                        "body": "[1, 2]"}, None)
