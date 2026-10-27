@@ -96,11 +96,23 @@ def challenge(request: dict, runner: Runner = serial_runner) -> dict:
         "curves": {"none": policy_summary(none, cfg.population)["curves"]["I"],
                    "random": policy_summary(rnd, cfg.population)["curves"]["I"]},
         "player_wins": vs_player["median"] < 0,
+        "map": challenge_map(cfg, beta, player, committee, vs_player),
         "elapsed_seconds": 0.0,
     }
     out["verdict_text"] = challenge_text(cfg, out)
     out["elapsed_seconds"] = round(time.perf_counter() - started, 2)
     return out
+
+
+def challenge_map(cfg: SimConfig, beta: float, player: str, committee: str, vs_player: dict) -> dict:
+    """The typical duel, replayed side by side: the run where the gap between the
+    committee and the player is the median, for the player's plan and the committee's."""
+    gap = np.asarray(vs_player["per_run"])
+    run = int(np.argsort(gap)[len(gap) // 2])
+    city = build_city(cfg.population, cfg.city_seed)
+    return {"days": cfg.days, "run": run + 1, "barrios": _barrios(),
+            "player": _replay(city, cfg, beta, player, run, "Tu plan"),
+            "committee": _replay(city, cfg, beta, committee, run, LABELS[committee])}
 
 
 def challenge_text(cfg: SimConfig, out: dict) -> str:
@@ -179,23 +191,31 @@ def map_payload(cfg: SimConfig, beta: float, best: dict) -> dict:
     saved = np.asarray(best["vs_none"]["per_run"])
     run = int(np.argsort(saved)[len(saved) // 2])
     city = build_city(cfg.population, cfg.city_seed)
+    out = {"days": cfg.days, "run": run + 1, "barrios": _barrios()}
+    for key, name in (("none", "none"), ("random", "random"), ("strategy", best["name"])):
+        out[key] = _replay(city, cfg, beta, name, run, LABELS[name])
+    return out
+
+
+def _barrios() -> list:
+    return [{"name": b[0], "lat": b[1], "lon": b[2]} for b in BARRIOS]
+
+
+def _replay(city, cfg: SimConfig, beta: float, policy: str, run: int, label: str) -> dict:
+    """One run of one policy, person by person (same streams, same result as in the batch)."""
     coords = np.rint(city.coords * 10_000).astype(int)
 
     def points(days: np.ndarray) -> list:
         idx = np.flatnonzero(days >= 0)
         return np.column_stack([coords[idx], days[idx]]).tolist()
 
-    out = {"days": cfg.days, "run": run + 1,
-           "barrios": [{"name": b[0], "lat": b[1], "lon": b[2]} for b in BARRIOS]}
-    for key, name in (("none", "none"), ("random", "random"), ("strategy", best["name"])):
-        res = simulate_policy(city, cfg, beta, name, run_ids=[run])
-        out[key] = {"label": LABELS[name], "bitten": points(res.bitten_day),
-                    "vaccinated": points(res.vaccinated_day),
-                    # S, E, I, R, V of this run, day by day (the progress bar)
-                    "counts": res.counts[0].tolist(),
-                    # [market closed, schools closed] each day of this run
-                    "closed": res.closed_first.astype(int).tolist()}
-    return out
+    res = simulate_policy(city, cfg, beta, policy, run_ids=[run])
+    return {"label": label, "bitten": points(res.bitten_day),
+            "vaccinated": points(res.vaccinated_day),
+            # S, E, I, R, V of this run, day by day (the progress bar)
+            "counts": res.counts[0].tolist(),
+            # [market closed, schools closed] each day of this run
+            "closed": res.closed_first.astype(int).tolist()}
 
 
 def _policy_out(name: str, summary: dict) -> dict:
