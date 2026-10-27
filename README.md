@@ -52,6 +52,21 @@ Con estos valores y la semilla 2026: «Anillo + conectados» evita en promedio *
 
 Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 4,0), la mitad de las vacunas (10/día), empieza en el mercado, variante que la vacuna cubre a medias (eficacia 50 %).
 
+## Checklist de requisitos DEBE
+
+| # | Requisito | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Simular día a día | ✅ | `src/engine/seir.py` (bucle diario); prueba S+E+I+R+V = N cada día |
+| 2 | Intervención con recursos limitados | ✅ | *K* vacunas/día y cierres pagados de un presupuesto total; prueba "el presupuesto nunca se excede" |
+| 3 | Comparar contra no intervenir y azar | ✅ | Torneo con Nada y Azar en las mismas semillas; tarjetas "frente a no hacer nada / al azar" |
+| 4 | Muchas corridas, promedios y rangos | ✅ | 100 corridas por política (40 en Vercel); promedio, rango del 90 % e IC 95 % en la interfaz |
+| 5 | Interfaz para cambiar contagio, vacunas e inicio | ✅ | Controles R0, vacunas por día y "Dónde empieza", más los presets de Brote Sorpresa |
+| 6 | Reproducible | ✅ | Misma config + semilla ⇒ mismo JSON byte a byte (prueba) y mismo hash en local y en Vercel |
+| 7 | Desplegado en AWS | ⏳ **Pendiente** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` pasa); falta la cuenta del equipo con Budget |
+| 8 | README con supuestos y fuentes | ✅ | Este README y [docs/supuestos.md](docs/supuestos.md) |
+
+Regla de la cuenta: el **AWS Budget con alerta** (captura abajo) también está pendiente, junto con el punto 7.
+
 ## Cómo correrlo en local
 
 Requisitos: Python 3.12 o 3.13.
@@ -76,7 +91,7 @@ python scripts/precompute.py          # map, jury, real, fiction
 python -m pytest
 ```
 
-43 pruebas, entre ellas:
+49 pruebas, entre ellas:
 
 | Prueba | Qué garantiza |
 |---|---|
@@ -91,6 +106,7 @@ python -m pytest
 | La tasa de crecimiento se recupera exacta en una curva conocida; los datos de Manta muestran la ola de 2020 | Calibración con datos reales |
 | Los puntos del mapa caen dentro de Manta y las vacunas aparecen desde el día de llegada | Mapa fiel a la simulación |
 | El presupuesto nunca se excede; "Nada" nunca cierra; cerrar colegios salva gente con las mismas semillas | Cierres y presupuesto |
+| NaN o infinito en la API ⇒ 400; semillas fuera de rango se acotan | API pública robusta |
 
 ## Cómo desplegarlo en AWS
 
@@ -154,7 +170,8 @@ docs/             supuestos, decisiones, costos y arquitectura
 - **R0 de un caso al azar:** en una red, los casos de las generaciones siguientes suelen estar más conectados, así que el crecimiento real del brote es algo mayor que el R0 nominal.
 - **Vacuna simplificada:** todo o nada, protege desde el mismo día y no se pierde con el tiempo.
 - **Sin muertes, hospitales ni cambios de comportamiento** (la gente no se encierra sola al ver casos).
-- **Una sola intervención** (vacunas). Cierres y cuarentenas con presupuesto son el siguiente paso; la red ya separa las capas para poder "apagar" el mercado o los colegios.
+- **Intervenciones acotadas:** vacunas y cierres de mercado o colegios con presupuesto. No hay cuarentenas individuales ni rastreo de contactos más allá del anillo.
+- **Sesgo del ganador:** Recomendar elige la estrategia con las mismas semillas con las que reporta su ventaja, así que la cifra "frente a Azar" es algo optimista cuando dos estrategias quedan cerca. El Modo Jurado evita esto con semillas de entrenamiento y de prueba separadas.
 - **Escala 1 : 27:** con 10 000 agentes, los números "en Manta" son una extrapolación lineal.
 
 ## Créditos
