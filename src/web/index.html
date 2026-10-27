@@ -4,23 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Plaga Zombie · Manta</title>
-  <meta name="description" content="Comité de Contención de Manta: simula la plaga, compara estrategias de vacunación contra no hacer nada y contra el azar, y pon a prueba la recomendación.">
+  <meta name="description" content="Comité de Contención de Manta: simula la plaga sobre el mapa de la ciudad, compara estrategias de vacunación contra no hacer nada y contra el azar, y pon a prueba la recomendación.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Creepster&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f7c7a'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23c8372d'/%3E%3C/svg%3E">
+  <link rel="icon" href="assets/mineral-halloween.svg" type="image/svg+xml">
 </head>
 <body>
+  <div class="fog" aria-hidden="true"><span></span><span></span></div>
+
   <header class="masthead">
     <div class="masthead__brand">
-      <span class="masthead__mark" aria-hidden="true"></span>
       <div>
-        <p class="eyebrow">Comité de Contención · Manta</p>
-        <h1>La Plaga Zombie</h1>
+        <p class="eyebrow">Comité de Contención · Manta · SpookyThon 2026</p>
+        <h1 class="title">La Plaga Zombie</h1>
       </div>
     </div>
-    <p class="masthead__lede">Cambia las condiciones del brote y mira, con cientos de corridas pareadas, cuánta gente salva cada estrategia frente a no hacer nada y frente a vacunar al azar.</p>
+    <div class="masthead__side">
+      <p class="masthead__lede">Mira cómo la plaga recorre Manta día a día y qué estrategia de vacunación salva más gente, con cientos de corridas pareadas contra no hacer nada y contra vacunar al azar.</p>
+      <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
+        <img src="assets/mineral-halloween.svg" alt="" width="44" height="46">
+        <span>Hecho por<br><strong>Mineral Studio</strong></span>
+      </a>
+    </div>
   </header>
 
   <div class="layout">
@@ -37,7 +45,7 @@
 
         <label class="field">
           <span class="field__label">Contagio (R0) <output id="r0Out"></output></span>
-          <input type="range" name="r0" min="0" max="6" step="0.1">
+          <input type="range" name="r0" min="0" max="8" step="0.05">
           <span class="field__help">Personas que contagia un Zombie en una ciudad sin defensas.</span>
         </label>
 
@@ -60,6 +68,14 @@
         <details class="more">
           <summary>Más parámetros</summary>
           <label class="field">
+            <span class="field__label">Días como Mordido <output id="latentOut"></output></span>
+            <input type="range" name="latent_mean" min="0.5" max="14" step="0.5">
+          </label>
+          <label class="field">
+            <span class="field__label">Días como Zombie <output id="infOut"></output></span>
+            <input type="range" name="infectious_mean" min="1" max="21" step="0.5">
+          </label>
+          <label class="field">
             <span class="field__label">Llegan las vacunas el día <output id="startOut"></output></span>
             <input type="range" name="vaccine_start_day" min="0" max="40" step="1">
           </label>
@@ -74,6 +90,10 @@
           <label class="field">
             <span class="field__label">Casos iniciales</span>
             <input type="number" name="initial_cases" min="1" max="200">
+          </label>
+          <label class="field">
+            <span class="field__label">Días simulados</span>
+            <input type="number" name="days" min="10" max="365" step="10">
           </label>
           <label class="field">
             <span class="field__label">Corridas por política</span>
@@ -105,10 +125,10 @@
       <section class="panel verdict" id="verdict">
         <div class="verdict__empty" id="empty">
           <p class="eyebrow">Sin resultados todavía</p>
-          <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. Con la semilla por defecto tarda unos segundos.</p>
+          <p>Elige las condiciones y pulsa <strong>Recomendar</strong>. El mapa viajará a Manta y repetirá el brote día por día.</p>
         </div>
         <div class="verdict__body" id="verdictBody" hidden>
-          <p class="eyebrow">Recomendación</p>
+          <p class="eyebrow">Recomendación del comité</p>
           <h2 class="verdict__name" id="bestName"></h2>
           <p class="verdict__text" id="recText"></p>
           <div class="figures">
@@ -136,6 +156,45 @@
             <div class="seedstrip__ticks" id="strip" role="img"></div>
           </div>
         </div>
+      </section>
+
+      <!-- Animated map -->
+      <section class="panel mapcard" id="mapcard">
+        <div class="panel__head">
+          <h2>La plaga sobre Manta</h2>
+          <div class="segmented" role="group" aria-label="Qué corrida ver en el mapa" id="mapPolicy">
+            <button type="button" class="segmented__btn" data-policy="none" aria-pressed="true">Sin intervenir</button>
+            <button type="button" class="segmented__btn" data-policy="random" aria-pressed="false">Azar</button>
+            <button type="button" class="segmented__btn" data-policy="strategy" aria-pressed="false">Estrategia</button>
+          </div>
+        </div>
+        <div class="map-wrap">
+          <div id="map" class="map" role="img" aria-label="Mapa de Manta con los casos de la corrida 1"></div>
+          <div class="map-hud">
+            <div class="hud__day"><span>Día</span><strong id="hudDay">0</strong></div>
+            <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong></div>
+            <div class="hud__stat"><span>Mordidos en total</span><strong id="hudBitten">0</strong></div>
+            <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong></div>
+          </div>
+          <div class="ticker" aria-live="polite"><span class="ticker__tag">EN VIVO</span><span class="ticker__text" id="ticker">Manta duerme tranquila… por ahora.</span></div>
+        </div>
+        <div class="map-controls">
+          <button type="button" class="btn btn--ghost" id="play" disabled>▶ Reproducir</button>
+          <input type="range" id="daySlider" min="0" max="150" value="0" aria-label="Día de la simulación" disabled>
+          <select id="speed" aria-label="Velocidad">
+            <option value="2">Lento</option>
+            <option value="5" selected>Normal</option>
+            <option value="12">Rápido</option>
+          </select>
+          <div class="segmented segmented--small" role="group" aria-label="Tipo de mapa">
+            <button type="button" class="segmented__btn" data-tiles="dark" aria-pressed="true">Noche</button>
+            <button type="button" class="segmented__btn" data-tiles="sat" aria-pressed="false">Satélite</button>
+          </div>
+        </div>
+        <p class="hint map-legend">
+          <i class="dot dot--bitten"></i>Mordido <i class="dot dot--zombie"></i>Zombie <i class="dot dot--gone"></i>Exorcizado <i class="dot dot--vax"></i>Vacunado
+          · Corrida 1 de la semilla elegida. Cada punto es una persona simulada (≈ 27 en la vida real); las casas se ubican al azar dentro de su barrio.
+        </p>
       </section>
 
       <section class="panel">
@@ -168,6 +227,22 @@
         </div>
       </section>
 
+      <!-- Real data vs fiction -->
+      <section class="panel realfic" id="realfic">
+        <div class="panel__head">
+          <h2>Evidencia real y ficción</h2>
+          <p class="hint">El mismo motor, calibrado con datos de Manta y puesto frente a los zombis del cine.</p>
+        </div>
+        <div class="realfic__grid">
+          <div>
+            <h3 class="mini-title">COVID-19 en Manta, 2020: muertes de más por semana</h3>
+            <div class="chart-box chart-box--short"><canvas id="realChart" aria-label="Exceso de muertes en Manta en 2020 y curva del modelo"></canvas></div>
+            <p class="realfic__text" id="realText"></p>
+          </div>
+          <div class="scenarios" id="scenarios"></div>
+        </div>
+      </section>
+
       <section class="panel jury" id="jury">
         <div class="panel__head">
           <h2>Modo Jurado</h2>
@@ -176,7 +251,7 @@
         <p class="jury__frontier" id="autoText"></p>
         <p class="jury__fixed" id="frontier"></p>
         <div class="jury__shares" id="shares"></div>
-        <div class="segmented" role="group" aria-label="Qué evaluar en el gráfico">
+        <div class="segmented" role="group" aria-label="Qué evaluar en el gráfico" id="juryView">
           <button type="button" class="segmented__btn" data-view="auto" aria-pressed="true">Torneo automático</button>
           <button type="button" class="segmented__btn" data-view="fixed" aria-pressed="false">Regla fija</button>
         </div>
@@ -211,7 +286,13 @@
     </main>
   </div>
 
+  <footer class="site-footer">
+    <img src="assets/mineral-halloween.svg" alt="" width="28" height="30">
+    <span>Mineral Studio · Comité de Contención de Manta · SpookyThon 2026, ULEAM</span>
+  </footer>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
