@@ -227,6 +227,7 @@ input[type="number"], select {
 .map-wrap { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
 .map { height: 520px; background: #08040d; }
 .leaflet-container { font-family: var(--body); }
+.map-wrap .leaflet-bottom { bottom: 38px; }  /* keep attribution above the ticker */
 .leaflet-control-attribution { background: rgba(13, 7, 20, .75) !important; color: var(--ink-soft) !important; }
 .leaflet-control-attribution a { color: var(--pumpkin-2) !important; }
 .map-hud {

@@ -349,7 +349,8 @@ function loadMapRun(data) {
   if (!mapState.flown) {
     mapState.flown = true;
     map.removeLayer(mapState.pin);
-    map.flyTo([-0.968, -80.735], 13, { duration: 3.2 });
+    const zoom = map.getSize().x < 600 ? 12 : 13;
+    map.flyTo([-0.968, -80.735], zoom, { duration: 3.2 });
     map.once("moveend", () => {
       showBarrioLabels(data.map.barrios);
       play();
