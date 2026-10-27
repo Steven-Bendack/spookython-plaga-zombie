@@ -1,1 +1,4 @@
-{ "$schema": "https://openapi.vercel.sh/vercel.json" }
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "if [ -d src/web ]; then rm -rf public && cp -r src/web public && printf %.12s \"${VERCEL_GIT_COMMIT_SHA:-unknown}\" > src/engine/COMMIT; fi"
+}
