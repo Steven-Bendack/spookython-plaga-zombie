@@ -591,19 +591,21 @@ const mapState = {
 function initMap() {
   if (!window.L) return;
   // Starts where the intro globe will hand over, so those tiles are loaded by then.
-  const map = L.map("map", { zoomControl: false, attributionControl: true, scrollWheelZoom: true })
+  const map = L.map("map", { zoomControl: false, attributionControl: true, scrollWheelZoom: true, maxZoom: 18 })
     .setView(MANTA, HANDOFF_ZOOM);
   L.control.zoom({ position: "bottomright" }).addTo(map);
   const esri = (path) => `https://server.arcgisonline.com/ArcGIS/rest/services/${path}/MapServer/tile/{z}/{y}/{x}`;
+  // Keep a wider ring of tiles loaded so panning and zooming out rarely shows gaps.
+  const tile = (path, options) => L.tileLayer(esri(path), { keepBuffer: 6, ...options });
   const attribution = "Mapa &copy; Esri, HERE, Garmin, &copy; colaboradores de OpenStreetMap";
   // Place names stay off during the descent: scaled-up label tiles look blurry while flying.
-  mapState.darkLabels = L.tileLayer(esri("Canvas/World_Dark_Gray_Reference"), { maxZoom: 16 });
+  mapState.darkLabels = tile("Canvas/World_Dark_Gray_Reference", { maxNativeZoom: 16, maxZoom: 18 });
   mapState.tiles.dark = L.layerGroup([
-    L.tileLayer(esri("Canvas/World_Dark_Gray_Base"), { maxZoom: 16, attribution }),
+    tile("Canvas/World_Dark_Gray_Base", { maxNativeZoom: 16, maxZoom: 18, attribution }),
   ]).addTo(map);
   mapState.tiles.sat = L.layerGroup([
-    L.tileLayer(esri("World_Imagery"), { maxZoom: 18, attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics" }),
-    L.tileLayer(esri("Reference/World_Boundaries_and_Places"), { maxZoom: 18 }),
+    tile("World_Imagery", { maxZoom: 18, attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics" }),
+    tile("Reference/World_Boundaries_and_Places", { maxZoom: 18 }),
   ]);
   mapState.pin = L.marker(MANTA, { icon: L.divIcon({ className: "", html: '<div class="manta-pin"></div>', iconSize: [18, 18] }) })
     .addTo(map).bindTooltip("Manta", { permanent: true, direction: "right", className: "barrio-label" });
