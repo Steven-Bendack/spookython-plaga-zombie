@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Plaga Zombie (SpookyThon 2026, Track B). Static web on S3 + CloudFront,
+  HTTP API -> Lambda (interactive tournament with worker fan-out) and
+  Step Functions Distributed Map for big Monte Carlo jobs. Region: us-east-1.
+
+Parameters:
+  MaxFanout:
+    Type: Number
+    Default: 10
+    Description: Parallel worker Lambdas per interactive request (keep under the account concurrency quota).
+  MapMaxConcurrency:
+    Type: Number
+    Default: 40
+    Description: Parallel children of the Distributed Map.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [x86_64]
+    CodeUri: ../src/
+    Layers: [!Ref NumpyLayer]
+    Tracing: Active
+    Environment:
+      Variables:
+        RESULTS_BUCKET: !Ref ResultsBucket
+
+Resources:
+  # ---------- shared code ----------
+  NumpyLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: numpy (manylinux wheel) built by infra/build_layer.py
+      ContentUri: ../build/numpy-layer/
+      CompatibleRuntimes: [python3.12]
+
+  # ---------- storage ----------
+  ResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-jobs
+            Status: Enabled
+            ExpirationInDays: 30
+
+  WebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Statement:
+          - Sid: CloudFrontReadOnly
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub "${WebBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  # ---------- API ----------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.api.handler
+      MemorySize: 1769
+      Timeout: 29
+      Environment:
+        Variables:
+          WORKER_FUNCTION: !Ref WorkerFunction
+          STATE_MACHINE_ARN: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-montecarlo"
+          MAX_FANOUT: !Ref MaxFanout
+          MAX_INTERACTIVE_RUNS: "200"
+      Policies:
+        - LambdaInvokePolicy: { FunctionName: !Ref WorkerFunction }
+        - S3ReadPolicy: { BucketName: !Ref ResultsBucket }
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-montecarlo"
+            - Effect: Allow
+              Action: states:DescribeExecution
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-montecarlo:*"
+      Events:
+        Meta:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /api/meta }
+        Simulate:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/simulate }
+        StartJob:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/jobs }
+        JobStatus:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: "/api/jobs/{id}" }
+
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.worker.handler
+      MemorySize: 3008
+      Timeout: 120
+
+  # ---------- big Monte Carlo jobs ----------
+  JobPlanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.jobs.plan
+      MemorySize: 1024
+      Timeout: 60
+      Policies:
+        - S3CrudPolicy: { BucketName: !Ref ResultsBucket }
+
+  JobAggregateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.jobs.aggregate
+      MemorySize: 3008
+      Timeout: 300
+      Policies:
+        - S3CrudPolicy: { BucketName: !Ref ResultsBucket }
+
+  MonteCarloStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-montecarlo"
+      DefinitionUri: statemachine/montecarlo.asl.json
+      DefinitionSubstitutions:
+        PlanFunctionArn: !GetAtt JobPlanFunction.Arn
+        WorkerFunctionArn: !GetAtt WorkerFunction.Arn
+        AggregateFunctionArn: !GetAtt JobAggregateFunction.Arn
+        ResultsBucket: !Ref ResultsBucket
+        MaxConcurrency: !Ref MapMaxConcurrency
+      Policies:
+        - LambdaInvokePolicy: { FunctionName: !Ref JobPlanFunction }
+        - LambdaInvokePolicy: { FunctionName: !Ref WorkerFunction }
+        - LambdaInvokePolicy: { FunctionName: !Ref JobAggregateFunction }
+        - S3CrudPolicy: { BucketName: !Ref ResultsBucket }
+        - Statement:
+            # The Distributed Map starts child executions of this same state machine.
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-montecarlo"
+            - Effect: Allow
+              Action: [states:DescribeExecution, states:StopExecution]
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-montecarlo/*"
+
+  # ---------- CDN: one public URL for web and API ----------
+  WebOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-web-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Plaga Zombie Manta
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        HttpVersion: http2and3
+        Origins:
+          - Id: web
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !Ref WebOriginAccessControl
+            S3OriginConfig: { OriginAccessIdentity: "" }
+          - Id: api
+            DomainName: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginReadTimeout: 30
+        DefaultCacheBehavior:
+          TargetOriginId: web
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6        # Managed-CachingOptimized
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad      # Managed-CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # Managed-AllViewerExceptHostHeader
+
+Outputs:
+  WebUrl:
+    Description: Public URL (web + /api)
+    Value: !Sub "https://${Distribution.DomainName}"
+  WebBucketName:
+    Description: Upload src/web here (aws s3 sync)
+    Value: !Ref WebBucket
+  DistributionId:
+    Value: !Ref Distribution
+  ApiUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"

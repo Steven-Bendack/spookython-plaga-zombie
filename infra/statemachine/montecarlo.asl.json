@@ -1,0 +1,58 @@
+{
+  "Comment": "Big Monte Carlo job: plan chunks, run them in parallel with a Distributed Map, aggregate.",
+  "StartAt": "Plan",
+  "States": {
+    "Plan": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": { "FunctionName": "${PlanFunctionArn}", "Payload.$": "$" },
+      "ResultSelector": { "plan.$": "$.Payload" },
+      "ResultPath": "$.planned",
+      "Next": "RunChunks"
+    },
+    "RunChunks": {
+      "Type": "Map",
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:getObject",
+        "ReaderConfig": { "InputType": "JSON" },
+        "Parameters": { "Bucket": "${ResultsBucket}", "Key.$": "$.planned.plan.tasks_key" }
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": { "Mode": "DISTRIBUTED", "ExecutionType": "STANDARD" },
+        "StartAt": "Simulate",
+        "States": {
+          "Simulate": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": { "FunctionName": "${WorkerFunctionArn}", "Payload.$": "$" },
+            "OutputPath": "$.Payload",
+            "Retry": [
+              {
+                "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+                "IntervalSeconds": 2, "MaxAttempts": 6, "BackoffRate": 2
+              }
+            ],
+            "End": true
+          }
+        }
+      },
+      "MaxConcurrency": ${MaxConcurrency},
+      "ResultWriter": {
+        "Resource": "arn:aws:states:::s3:putObject",
+        "Parameters": { "Bucket": "${ResultsBucket}", "Prefix.$": "States.Format('jobs/{}/map', $.job_id)" }
+      },
+      "ResultPath": "$.map_result",
+      "Next": "Aggregate"
+    },
+    "Aggregate": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${AggregateFunctionArn}",
+        "Payload": { "job_id.$": "$.job_id", "map_result.$": "$.map_result" }
+      },
+      "OutputPath": "$.Payload",
+      "End": true
+    }
+  }
+}
