@@ -13,6 +13,19 @@
   <link rel="icon" href="assets/mineral-halloween.svg" type="image/svg+xml">
 </head>
 <body>
+  <div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <canvas class="intro__canvas" id="introCanvas" aria-hidden="true"></canvas>
+    <div class="intro__content">
+      <p class="eyebrow">Manta · Comité de Contención</p>
+      <h1 class="intro__title" id="introTitle">La Plaga Zombie</h1>
+      <p class="intro__text">Algo muerde en Manta. Hay pocas vacunas y cada día cuenta.<br>Tú decides a quién se las ponemos.</p>
+      <div class="intro__actions">
+        <button type="button" class="btn btn--primary" id="enterSound">Entrar con sonido</button>
+        <button type="button" class="btn btn--ghost" id="enterQuiet">Entrar en silencio</button>
+      </div>
+      <p class="intro__hint">Mejor con audífonos. La música se genera en vivo en tu navegador.</p>
+    </div>
+  </div>
   
   <header class="masthead">
     <div class="masthead__brand">
@@ -23,6 +36,7 @@
     </div>
     <div class="masthead__side">
       <p class="masthead__lede">Cada día llegan pocas vacunas. Aquí probamos a quién ponérselas: simulamos la plaga cien veces por estrategia, con la misma suerte para todas, y comparamos contra no hacer nada y contra repartirlas al azar.</p>
+      <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="false">Sonido apagado</button>
       <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
         <img src="assets/mineral-halloween.svg" alt="" width="44" height="46">
         <span>Hecho por<br><strong>Mineral Studio</strong></span>
@@ -174,6 +188,7 @@
             <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong></div>
             <div class="hud__stat"><span>Mordidos en total</span><strong id="hudBitten">0</strong></div>
             <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong></div>
+            <div class="hud__stat hud__stat--city"><span>De la ciudad</span><strong id="hudCity">0 %</strong></div>
           </div>
           <div class="ticker" aria-live="polite"><span class="ticker__tag">EN VIVO</span><span class="ticker__text" id="ticker">Manta duerme tranquila… por ahora.</span></div>
         </div>
@@ -189,6 +204,13 @@
             <button type="button" class="segmented__btn" data-tiles="dark" aria-pressed="true">Noche</button>
             <button type="button" class="segmented__btn" data-tiles="sat" aria-pressed="false">Satélite</button>
           </div>
+        </div>
+        <div class="progress" id="progress" hidden>
+          <div class="progress__bar" id="progressBar" role="img" aria-label="Estado de la ciudad el día actual">
+            <span class="seg seg--sano"></span><span class="seg seg--vax"></span><span class="seg seg--bitten"></span><span class="seg seg--zombie"></span><span class="seg seg--gone"></span>
+          </div>
+          <div class="progress__legend" id="progressLegend"></div>
+          <canvas class="timeline" id="timeline" aria-label="Zombies por día en esta corrida; la línea marca el día actual"></canvas>
         </div>
         <p class="hint map-legend">
           <i class="dot dot--bitten"></i>Mordido <i class="dot dot--zombie"></i>Zombie <i class="dot dot--gone"></i>Exorcizado <i class="dot dot--vax"></i>Vacunado
@@ -284,6 +306,8 @@
       </footer>
     </main>
   </div>
+
+  <div class="mobile-run"><button type="submit" form="form" class="btn btn--primary">Recomendar</button></div>
 
   <footer class="site-footer">
     <img src="assets/mineral-halloween.svg" alt="" width="28" height="30">

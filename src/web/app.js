@@ -1,4 +1,5 @@
 // Plaga Zombie · Manta — UI. Plain ES module, no build step.
+import * as sound from "./sound.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -33,6 +34,7 @@ if (window.Chart) {
 // ---------- bootstrapping ----------
 
 async function init() {
+  initIntro();
   initMap();
   const [meta, dmap, jury, real, scenarios] = await Promise.all([
     getJSON(`${API}/meta`),
@@ -86,6 +88,80 @@ function segmented(groupSel, attr, onChange) {
     group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
     onChange(btn.dataset[attr]);
   });
+}
+
+// ---------- intro and sound ----------
+
+function initIntro() {
+  const intro = $("#intro");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stopAnim = introAnimation($("#introCanvas"), reduce);
+  const enter = async (withSound) => {
+    if (withSound) {
+      try { await sound.start(); } catch { /* audio blocked: continue in silence */ }
+    }
+    updateSoundButton();
+    intro.classList.add("is-leaving");
+    setTimeout(() => { intro.hidden = true; stopAnim(); }, reduce ? 0 : 700);
+    $("#run").focus({ preventScroll: true });
+  };
+  $("#enterSound").addEventListener("click", () => enter(true));
+  $("#enterQuiet").addEventListener("click", () => enter(false));
+  $("#soundToggle").addEventListener("click", async () => {
+    if (sound.isOn()) sound.stop(); else await sound.start();
+    updateSoundButton();
+  });
+  $("#enterSound").focus();
+}
+
+function updateSoundButton() {
+  const on = sound.isOn();
+  const btn = $("#soundToggle");
+  btn.setAttribute("aria-pressed", String(on));
+  btn.textContent = on ? "Sonido encendido" : "Sonido apagado";
+}
+
+// Intro background: houses of a dark city; a few catch the plague and it spreads.
+function introAnimation(canvas, reduce) {
+  const ctx = canvas.getContext("2d");
+  let raf = 0;
+  let people = [];
+  const resize = () => {
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = innerWidth * ratio;
+    canvas.height = innerHeight * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const count = Math.round((innerWidth * innerHeight) / 2600);
+    people = Array.from({ length: count }, () => ({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight, bitten: -1,
+    }));
+    for (let i = 0; i < 3; i += 1) people[Math.floor(Math.random() * count)].bitten = 0;
+  };
+  resize();
+  addEventListener("resize", resize);
+  let t = 0;
+  const frame = () => {
+    t += 1;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    const sick = people.filter((p) => p.bitten >= 0 && t - p.bitten < 260);
+    for (const p of people) {
+      if (p.bitten < 0 && Math.random() < 0.02) {
+        for (const z of sick) {
+          if (Math.abs(z.x - p.x) < 46 && Math.abs(z.y - p.y) < 46) { p.bitten = t; break; }
+        }
+      }
+      const age = p.bitten < 0 ? -1 : t - p.bitten;
+      if (age < 0) ctx.fillStyle = "rgba(239, 230, 214, 0.18)";
+      else if (age < 40) ctx.fillStyle = "#ffc94d";
+      else if (age < 260) ctx.fillStyle = `rgba(255, 59, 59, ${0.9 - 0.4 * Math.sin(t / 9 + p.x)})`;
+      else ctx.fillStyle = "rgba(120, 100, 110, 0.35)";
+      ctx.fillRect(p.x, p.y, 2.4, 2.4);
+    }
+    if (sick.length === 0) resize();
+    if (!reduce) raf = requestAnimationFrame(frame);
+  };
+  frame();
+  return () => { cancelAnimationFrame(raf); removeEventListener("resize", resize); };
 }
 
 // ---------- form ----------
@@ -241,7 +317,8 @@ function renderCurves(data) {
     const color = COLORS[key];
     datasets.push({ label: `${pol.label} · banda`, data: pol.curves.I_p95, borderWidth: 0, pointRadius: 0, fill: false, _band: true });
     datasets.push({ label: `${pol.label} · banda inferior`, data: pol.curves.I_p5, borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: hexA(color, 0.14), _band: true });
-    datasets.push({ label: pol.label, data: pol.curves.I, borderColor: color, borderWidth: key === "strategy" ? 3 : 2, pointRadius: 0, fill: false, tension: 0.25 });
+    datasets.push({ label: pol.label, data: pol.curves.I, borderColor: color, borderWidth: key === "strategy" ? 3 : 2,
+      pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: color, fill: false, tension: 0.3 });
   }
   drawChart("curveChart", {
     type: "line",
@@ -356,15 +433,13 @@ function loadMapRun(data) {
   if (!map) return;
   $("#play").disabled = false;
   $("#daySlider").disabled = false;
+  $("#progress").hidden = false;
   if (!mapState.flown) {
     mapState.flown = true;
     map.removeLayer(mapState.pin);
     const zoom = map.getSize().x < 600 ? 12 : 13;
     map.flyTo([-0.975, -80.735], zoom, { duration: 3.2 });
-    map.once("moveend", () => {
-      showBarrioLabels(data.map.barrios);
-      play();
-    });
+    map.once("moveend", play);
   } else {
     play();
   }
@@ -387,7 +462,7 @@ function prepareRun() {
   const sick = cfg.latent_mean + cfg.infectious_mean;
   const lastBite = bitten.reduce((m, p) => Math.max(m, p[2]), 0);
   mapState.run = {
-    bitten, vaccinated, latent: cfg.latent_mean, sick, label: run.label,
+    bitten, vaccinated, latent: cfg.latent_mean, sick, label: run.label, counts: run.counts,
     events: buildEvents(bitten, data, run.label),
   };
   mapState.lastDay = Math.min(cfg.days, Math.ceil(lastBite + sick + 2));
@@ -526,62 +601,76 @@ function drawPeople() {
 
   const day = mapState.day;
   const now = performance.now() / 1000;
-  const r = Math.max(1.3, (map.getZoom() - 10) * 0.85);
+  const zoom = map.getZoom();
+  const r = Math.max(1.4, Math.min(5, 1.4 + (zoom - 11) * 0.8));
+  const outline = "rgba(10, 6, 12, 0.9)";
   let zombies = 0;
   let bittenSoFar = 0;
   let vax = 0;
 
-  // Vaccinated: small cyan squares that settle in.
-  for (const p of run.vaccinated) {
-    const age = day - p[2];
-    if (age < 0) continue;
-    vax += 1;
-    const pt = map.latLngToContainerPoint([p[0], p[1]]);
-    ctx.fillStyle = `rgba(56, 232, 255, ${Math.min(1, 0.35 + age)})`;
-    ctx.fillRect(pt.x - r * 0.6, pt.y - r * 0.6, r * 1.2, r * 1.2);
-  }
-  const zombiesNow = [];
-  const ripples = [];
+  const dot = (pt, radius, fill) => {
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = Math.max(0.8, radius * 0.35); ctx.strokeStyle = outline; ctx.stroke();
+  };
+
+  // Exorcised first (bottom), then vaccinated, bitten, zombies on top.
+  const later = { vax: [], bitten: [], zombie: [], ripple: [] };
   for (let i = 0; i < run.bitten.length; i += 1) {
     const p = run.bitten[i];
     const age = day - p[2];
     if (age < 0) continue;
     bittenSoFar += 1;
     const pt = map.latLngToContainerPoint([p[0], p[1]]);
-    if (age < 1.5) ripples.push([pt, age]);
-    if (age < run.latent) {
-      ctx.fillStyle = "#ffc94d";
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 0.75, 0, Math.PI * 2); ctx.fill();
-    } else if (age < run.sick) {
-      zombies += 1;
-      zombiesNow.push([pt, i]);
-    } else {
-      // Exorcised: fades from dull red to ash over a week.
+    if (age < 1.5) later.ripple.push([pt, age]);
+    if (age < run.latent) later.bitten.push(pt);
+    else if (age < run.sick) { zombies += 1; later.zombie.push([pt, i]); }
+    else {
       const fade = Math.min(1, (age - run.sick) / 7);
-      ctx.fillStyle = `rgba(${Math.round(150 - 40 * fade)}, ${Math.round(70 + 30 * fade)}, ${Math.round(80 + 48 * fade)}, ${0.7 - 0.35 * fade})`;
+      ctx.fillStyle = `rgba(${Math.round(160 - 50 * fade)}, ${Math.round(80 + 25 * fade)}, ${Math.round(90 + 35 * fade)}, ${0.75 - 0.35 * fade})`;
       ctx.fillRect(pt.x - r * 0.45, pt.y - r * 0.45, r * 0.9, r * 0.9);
     }
   }
-  // A ring spreads out where someone was just bitten.
-  ctx.lineWidth = 1.2;
-  for (const [pt, age] of ripples) {
-    ctx.strokeStyle = `rgba(255, 201, 77, ${0.8 * (1 - age / 1.5)})`;
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * (1.2 + age * 5), 0, Math.PI * 2); ctx.stroke();
+  for (const p of run.vaccinated) {
+    if (p[2] > day) continue;
+    vax += 1;
+    later.vax.push(map.latLngToContainerPoint([p[0], p[1]]));
   }
-  // Zombies breathe.
-  for (const [pt, i] of zombiesNow) {
-    const pulse = 1 + 0.35 * Math.sin(now * 3 + i);
-    ctx.fillStyle = "rgba(255, 59, 59, 0.18)";
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.4 * pulse, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ff3b3b";
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2); ctx.fill();
+  // Vaccinated: a small cyan "+".
+  const arm = r * 0.95;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = outline; ctx.lineWidth = r * 0.9;
+  ctx.beginPath();
+  for (const pt of later.vax) { ctx.moveTo(pt.x - arm, pt.y); ctx.lineTo(pt.x + arm, pt.y); ctx.moveTo(pt.x, pt.y - arm); ctx.lineTo(pt.x, pt.y + arm); }
+  ctx.stroke();
+  ctx.strokeStyle = "#38e8ff"; ctx.lineWidth = r * 0.45;
+  ctx.stroke();
+  // Bitten: amber dots.
+  for (const pt of later.bitten) dot(pt, r * 0.8, "#ffc94d");
+  // Ripples where someone was just bitten.
+  ctx.lineWidth = 1.4;
+  for (const [pt, age] of later.ripple) {
+    ctx.strokeStyle = `rgba(255, 201, 77, ${0.85 * (1 - age / 1.5)})`;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * (1.3 + age * 5), 0, Math.PI * 2); ctx.stroke();
   }
+  // Zombies: red with a breathing halo, always on top.
+  for (const [pt, i] of later.zombie) {
+    const pulse = 1 + 0.3 * Math.sin(now * 3 + i);
+    ctx.fillStyle = "rgba(255, 59, 59, 0.16)";
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.3 * pulse, 0, Math.PI * 2); ctx.fill();
+    dot(pt, r * 1.05, "#ff3b3b");
+  }
+  drawBarrioNames(ctx, map);
 
+  const n = mapState.data.config.population;
   $("#hudDay").textContent = Math.floor(day);
   $("#hudZombies").textContent = fmt(zombies);
   $("#hudBitten").textContent = fmt(bittenSoFar);
   $("#hudVax").textContent = fmt(vax);
+  $("#hudCity").textContent = pct(bittenSoFar / n);
   $("#daySlider").value = Math.floor(day);
+  drawProgress(day);
+  sound.setTension((zombies / n) * 10);
   const ev = run.events.filter((e) => e.day <= day).at(-1);
   const ticker = $("#ticker");
   if (ev && ticker.textContent !== ev.text) {
@@ -589,7 +678,69 @@ function drawPeople() {
     ticker.classList.remove("is-new");
     void ticker.offsetWidth;
     ticker.classList.add("is-new");
+    if (mapState.playing) sound.bite();
   }
+}
+
+// How the city is doing on this day of the replayed run (exact counts).
+// Barrio names on top of the people, so the outbreak never hides them.
+function drawBarrioNames(ctx, map) {
+  const barrios = mapState.data?.map.barrios;
+  if (!barrios || map.getZoom() < 12) return;
+  ctx.font = "600 11px 'IBM Plex Mono', monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const b of barrios) {
+    const pt = map.latLngToContainerPoint([b.lat, b.lon]);
+    const text = b.name.toUpperCase();
+    const w = ctx.measureText(text).width + 10;
+    ctx.fillStyle = "rgba(15, 12, 16, 0.78)";
+    ctx.fillRect(pt.x - w / 2, pt.y - 9, w, 18);
+    ctx.fillStyle = "#efe6d6";
+    ctx.fillText(text, pt.x, pt.y + 0.5);
+  }
+}
+
+function drawProgress(day) {
+  const run = mapState.run;
+  if (!run?.counts) return;
+  const counts = run.counts;
+  const d = Math.min(Math.floor(day), counts.length - 1);
+  const [S, E, I, R, V] = counts[d];
+  const n = S + E + I + R + V;
+  const parts = [["sano", S], ["vax", V], ["bitten", E], ["zombie", I], ["gone", R]];
+  const segs = $("#progressBar").children;
+  parts.forEach(([, v], i) => { segs[i].style.width = `${(100 * v) / n}%`; });
+  const names = { sano: "Sanos", vax: "Vacunados", bitten: "Mordidos", zombie: "Zombies", gone: "Exorcizados" };
+  $("#progressLegend").innerHTML = parts.map(([k, v]) =>
+    `<span class="pl pl--${k}"><i></i>${names[k]} <strong>${pct(v / n)}</strong></span>`).join("");
+  $("#progressBar").setAttribute("aria-label", parts.map(([k, v]) => `${names[k]} ${pct(v / n)}`).join(", "));
+
+  // Timeline: zombies per day of this run, with the current day marked.
+  const canvas = $("#timeline");
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (canvas.width !== w * ratio) { canvas.width = w * ratio; canvas.height = h * ratio; }
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const last = mapState.lastDay || counts.length - 1;
+  const max = Math.max(1, ...counts.slice(0, last + 1).map((c) => c[2] + c[1]));
+  const x = (i) => (i / last) * w;
+  const y = (v) => h - 2 - (v / max) * (h - 6);
+  ctx.fillStyle = "rgba(255, 59, 59, 0.16)";
+  ctx.beginPath(); ctx.moveTo(0, h);
+  for (let i = 0; i <= last; i += 1) ctx.lineTo(x(i), y(counts[i][2]));
+  ctx.lineTo(x(last), h); ctx.fill();
+  ctx.strokeStyle = "#ff3b3b"; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= last; i += 1) { if (i) ctx.lineTo(x(i), y(counts[i][2])); else ctx.moveTo(x(i), y(counts[i][2])); }
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255, 59, 59, 0.55)";
+  ctx.fillRect(0, 0, x(Math.min(day, last)), 2);
+  ctx.strokeStyle = "#ff7518"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x(Math.min(day, last)), 0); ctx.lineTo(x(Math.min(day, last)), h); ctx.stroke();
 }
 
 // ---------- real data and fiction ----------
@@ -741,21 +892,48 @@ async function runJury() {
 
 // ---------- charts ----------
 
+const isSmall = () => matchMedia("(max-width: 620px)").matches;
+
 function chartOptions(scales, legendLabels = {}, tooltipCallbacks = {}) {
+  const small = isSmall();
   return {
     responsive: true,
     maintainAspectRatio: false,
-    animation: { duration: 500 },
+    animation: { duration: 600, easing: "easeOutQuart" },
     interaction: { mode: "nearest", intersect: false },
+    layout: { padding: { top: 4, right: 6 } },
     plugins: {
-      legend: { labels: { usePointStyle: true, boxWidth: 8, ...legendLabels } },
-      tooltip: { callbacks: tooltipCallbacks, filter: (item) => !item.dataset._band },
+      legend: {
+        position: small ? "bottom" : "top",
+        labels: { usePointStyle: true, pointStyle: "rectRounded", boxWidth: 8, boxHeight: 8, padding: small ? 10 : 16,
+          font: { size: small ? 11 : 13 }, ...legendLabels },
+      },
+      tooltip: {
+        callbacks: tooltipCallbacks, filter: (item) => !item.dataset._band,
+        backgroundColor: "rgba(15, 12, 16, 0.95)", borderColor: COLORS.grid, borderWidth: 1,
+        titleFont: { family: "IBM Plex Mono", size: 12 }, bodyFont: { size: 12 }, padding: 10, boxPadding: 4,
+      },
     },
     scales: Object.fromEntries(Object.entries(scales).map(([k, v]) => [k, {
-      grid: { color: COLORS.grid }, ticks: { font: { family: "IBM Plex Mono", size: 11 } }, ...v,
+      grid: { color: COLORS.grid, drawTicks: false },
+      border: { display: false },
+      ...v,
+      title: v.title ? { ...v.title, display: !small || k === "x", font: { size: small ? 11 : 12 } } : undefined,
+      ticks: { font: { family: "IBM Plex Mono", size: small ? 10 : 11 }, padding: 6,
+        ...(v.ticks || {}), maxTicksLimit: small ? 6 : (v.ticks?.maxTicksLimit ?? 10) },
     }])),
   };
 }
+
+// Charts rebuild with the right legend and ticks when the screen size class changes.
+let lastSmall = isSmall();
+addEventListener("resize", () => {
+  if (isSmall() === lastSmall) return;
+  lastSmall = isSmall();
+  if (state.last) { renderCurves(state.last); }
+  renderReal(state.real);
+  renderJury(state.jury);
+});
 
 function drawChart(id, config) {
   state.charts[id]?.destroy();
