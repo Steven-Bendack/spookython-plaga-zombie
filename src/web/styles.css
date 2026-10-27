@@ -606,3 +606,33 @@ body.calm .bats { display: none; }
   #verdict .seedstrip__ticks { height: 28px; }
   #verdict .mayor__report { max-width: none; }
 }
+
+/* HUD meters, speed keys, barrio card */
+.hud__bar { display: block; height: 4px; margin-top: 4px; background: rgba(255, 255, 255, .08); }
+.hud__bar b { display: block; height: 100%; width: 0; background: var(--ink); }
+.hud__stat--zombie .hud__bar b { background: var(--blood); }
+.hud__stat--bitten .hud__bar b { background: var(--bitten); }
+.hud__stat--vax .hud__bar b { background: var(--vax); }
+.speed { display: inline-flex; border: 1px solid var(--line); }
+.speed__btn { font: 700 11px var(--mono); letter-spacing: -.12em; padding: 8px 10px; min-width: 42px; background: var(--night-2); color: var(--ink-soft); border: 0; cursor: pointer; }
+.speed__btn + .speed__btn { border-left: 1px solid var(--line); }
+.speed__btn:hover { color: var(--ink); }
+.speed__btn[aria-pressed="true"] { background: var(--pumpkin); color: #160d08; }
+.bcard {
+  position: absolute; top: 48px; right: 12px; z-index: 600; width: 250px;
+  padding: 14px 16px; background: rgba(21, 16, 23, .96); border: 1px solid var(--pumpkin);
+  border-top-width: 3px; box-shadow: 0 10px 30px rgba(0, 0, 0, .7);
+}
+.bcard__close { position: absolute; top: 6px; right: 8px; background: none; border: 0; color: var(--ink-soft); font-size: 20px; cursor: pointer; line-height: 1; }
+.bcard__close:hover { color: var(--ink); }
+@media (max-width: 620px) { .bcard { top: auto; bottom: 62px; left: 8px; right: 8px; width: auto; } }
+.bcard__eyebrow { font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin: 0; }
+.bcard__name { font: 800 26px/1 var(--display); font-stretch: 75%; text-transform: uppercase; color: var(--pumpkin); margin: 2px 0 10px; }
+.bcard__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.bcard__stats dt { font: 500 9px var(--mono); text-transform: uppercase; color: var(--ink-soft); }
+.bcard__stats dd { font: 800 22px var(--display); font-stretch: 75%; margin: 0; }
+.bcard__z dd { color: var(--blood); }
+.bcard__b dd { color: var(--bitten); }
+.bcard__v dd { color: var(--vax); }
+.bcard__note { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; }
+.leaflet-container { cursor: pointer; }

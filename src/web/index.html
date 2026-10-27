@@ -236,22 +236,23 @@
           <div id="map" class="map" role="img" aria-label="Mapa de Manta con los casos de la corrida típica"></div>
           <div class="map-hud">
             <div class="hud__day"><span>Día</span><strong id="hudDay">0</strong></div>
-            <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong></div>
-            <div class="hud__stat"><span>Mordidos en total</span><strong id="hudBitten">0</strong></div>
-            <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong></div>
+            <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong><i class="hud__bar"><b id="barZombies"></b></i></div>
+            <div class="hud__stat hud__stat--bitten"><span>Mordidos en total</span><strong id="hudBitten">0</strong><i class="hud__bar"><b id="barBitten"></b></i></div>
+            <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong><i class="hud__bar"><b id="barVax"></b></i></div>
             <div class="hud__stat hud__stat--city"><span>De la ciudad</span><strong id="hudCity">0 %</strong></div>
             <div class="hud__closed" id="hudClosed" hidden></div>
           </div>
+          <aside class="bcard" id="barrioCard" hidden aria-live="polite"></aside>
           <div class="ticker" aria-live="polite"><span class="ticker__tag">EN VIVO</span><span class="ticker__text" id="ticker">Manta duerme tranquila… por ahora.</span></div>
         </div>
         <div class="map-controls">
           <button type="button" class="btn btn--ghost" id="play" disabled>▶ Reproducir</button>
           <input type="range" id="daySlider" min="0" max="150" value="0" aria-label="Día de la simulación" disabled>
-          <select id="speed" aria-label="Velocidad">
-            <option value="2">Lento</option>
-            <option value="5" selected>Normal</option>
-            <option value="12">Rápido</option>
-          </select>
+          <div class="speed" role="group" aria-label="Velocidad" id="speed">
+            <button type="button" class="speed__btn" data-speed="2" aria-pressed="false" title="Lento">▶</button>
+            <button type="button" class="speed__btn" data-speed="5" aria-pressed="true" title="Normal">▶▶</button>
+            <button type="button" class="speed__btn" data-speed="12" aria-pressed="false" title="Rápido">▶▶▶</button>
+          </div>
           <div class="segmented segmented--small" role="group" aria-label="Tipo de mapa">
             <button type="button" class="segmented__btn" data-tiles="dark" aria-pressed="true">Noche</button>
             <button type="button" class="segmented__btn" data-tiles="sat" aria-pressed="false">Satélite</button>
@@ -266,7 +267,7 @@
         </div>
         <p class="hint map-legend">
           <i class="dot dot--bitten"></i>Mordido <i class="dot dot--zombie"></i>Zombie <i class="dot dot--gone"></i>Exorcizado <i class="dot dot--vax"></i>Vacunado
-          · <span id="mapRun">Corrida típica</span> de la semilla elegida (la mediana de personas salvadas). Cada punto es una persona simulada (≈ 27 en la vida real); cada hogar está en una calle real de su barrio (OpenStreetMap).
+          · <span id="mapRun">Corrida típica</span> de la semilla elegida (la mediana de personas salvadas). Toca un barrio para ver su ficha. Cada punto es una persona simulada (≈ 27 en la vida real); cada hogar está en una calle real de su barrio (OpenStreetMap).
         </p>
       </section>
 

@@ -553,6 +553,15 @@ function initMap() {
     mapState.tiles[t].addTo(map);
   });
   $("#play").addEventListener("click", () => (mapState.playing ? pause() : play()));
+  mapState.speed = 5;
+  $("#speed").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-speed]");
+    if (!btn) return;
+    mapState.speed = +btn.dataset.speed;
+    $("#speed").querySelectorAll("[data-speed]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    if (!mapState.playing) play();
+  });
+  map.on("click", (e) => showBarrioCard(e.latlng));
   $("#daySlider").addEventListener("input", (e) => { pause(); mapState.day = +e.target.value; drawPeople(); });
 }
 
@@ -598,6 +607,7 @@ function prepareRun() {
     events: buildEvents(bitten, data, run.label),
   };
   mapState.lastDay = Math.min(cfg.days, Math.ceil(lastBite + sick + 2));
+  mapState.peakZombies = Math.max(1, ...(run.counts || []).map((c) => c[2]));
   $("#daySlider").max = mapState.lastDay;
   mapState.day = Math.min(mapState.day, mapState.lastDay);
 }
@@ -621,14 +631,16 @@ function buildEvents(bitten, data, label) {
   const events = [];
   const byDay = [...bitten].sort((a, b) => a[2] - b[2]);
   const first = byDay.filter((p) => p[2] === 0).map((p) => nearestBarrio(p[0], p[1], barrios));
-  events.push({ day: 0, text: `Día 0: ${first.length} personas mordidas en ${[...new Set(first)].join(", ")}. Nadie lo sabe todavía.` });
+  const at = (name) => barrios.find((b) => b.name === name);
+  events.push({ day: 0, text: `Día 0: ${first.length} personas mordidas en ${[...new Set(first)].join(", ")}. Nadie lo sabe todavía.`,
+    bubble: { where: at(first[0]), title: "Paciente cero" } });
 
   const reached = new Set(first);
   for (const p of byDay) {
     const b = nearestBarrio(p[0], p[1], barrios);
     if (!reached.has(b)) {
       reached.add(b);
-      events.push({ day: p[2], text: `Día ${p[2]}: la plaga llega a ${b}.` });
+      events.push({ day: p[2], text: `Día ${p[2]}: la plaga llega a ${b}.`, bubble: { where: at(b), title: `Llega a ${b}` } });
     }
   }
   if (mapState.policy !== "none" && cfg.doses_per_day > 0) {
@@ -670,7 +682,7 @@ function play() {
   $("#play").textContent = "❚❚ Pausa";
   let last = performance.now();
   const step = (now) => {
-    const speed = +$("#speed").value; // days per second
+    const speed = mapState.speed; // days per second
     mapState.day = Math.min(mapState.lastDay, mapState.day + ((now - last) / 1000) * speed);
     last = now;
     drawPeople();
@@ -802,8 +814,12 @@ function drawPeople() {
     dot(pt, r * 1.05, "#ff3b3b");
   }
   drawBarrioNames(ctx, map);
+  drawBubbles(ctx, map, day, run.events);
 
   const n = mapState.data.config.population;
+  $("#barZombies").style.width = `${Math.min(100, (100 * zombies) / mapState.peakZombies)}%`;
+  $("#barBitten").style.width = `${(100 * bittenSoFar) / n}%`;
+  $("#barVax").style.width = `${(100 * vax) / n}%`;
   $("#hudDay").textContent = Math.floor(day);
   $("#hudZombies").textContent = fmt(zombies);
   $("#hudBitten").textContent = fmt(bittenSoFar);
@@ -826,6 +842,73 @@ function drawPeople() {
     ticker.classList.add("is-new");
     if (mapState.playing) sound.bite();
   }
+}
+
+// Event bubbles: each headline pops up over its barrio for a few days.
+function drawBubbles(ctx, map, day, events) {
+  if (map.getZoom() < 11) return;
+  ctx.font = "700 12px 'Archivo', sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const placed = [];
+  for (const ev of events) {
+    const age = day - ev.day;
+    if (!ev.bubble?.where || age < 0 || age > 4) continue;
+    const pop = Math.min(1, 0.2 + age * 4);         // grows in during the first quarter day
+    const pt = map.latLngToContainerPoint([ev.bubble.where.lat, ev.bubble.where.lon]);
+    const text = ev.bubble.title.toUpperCase();
+    const w = ctx.measureText(text).width + 30;
+    const x = pt.x - w / 2;
+    let y = pt.y - 34;
+    while (placed.some((r) => x < r.x + r.w && r.x < x + w && Math.abs(r.y - y) < 24)) y -= 26;
+    placed.push({ x, y, w });
+    ctx.save();
+    ctx.globalAlpha = age > 3 ? 4 - age : 1;        // fades on the last day
+    ctx.translate(pt.x, pt.y);
+    ctx.scale(pop, pop);
+    ctx.translate(-pt.x, -pt.y);
+    ctx.fillStyle = "#ff3b3b";
+    ctx.beginPath(); ctx.moveTo(pt.x - 4, y + 10); ctx.lineTo(pt.x, pt.y - 8); ctx.lineTo(pt.x + 4, y + 10); ctx.fill();
+    ctx.fillRect(x, y - 11, w, 22);
+    ctx.fillStyle = "#1a0b10";
+    ctx.beginPath(); ctx.arc(x + 11, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText(text, x + 21, y + 0.5);
+    ctx.restore();
+  }
+}
+
+// Barrio card: what happened in one barrio up to the current day of the run.
+function showBarrioCard(latlng) {
+  const run = mapState.run;
+  const barrios = mapState.data?.map.barrios;
+  if (!run || !barrios) return;
+  const name = nearestBarrio(latlng.lat, latlng.lng, barrios);
+  const day = Math.floor(mapState.day);
+  const scale = mapState.data.manta_scale;
+  let bitten = 0;
+  let zombies = 0;
+  let firstDay = null;
+  for (const p of run.bitten) {
+    if (p[2] > day || nearestBarrio(p[0], p[1], barrios) !== name) continue;
+    bitten += 1;
+    const age = day - p[2];
+    if (age >= run.latent && age < run.sick) zombies += 1;
+    if (firstDay === null || p[2] < firstDay) firstDay = p[2];
+  }
+  let vax = 0;
+  for (const p of run.vaccinated) if (p[2] <= day && nearestBarrio(p[0], p[1], barrios) === name) vax += 1;
+  const note = firstDay === null ? "Todavía sin casos." : `Primer caso el día ${firstDay}. ≈ ${fmt(bitten * scale)} mantenses mordidos.`;
+  const card = $("#barrioCard");
+  card.innerHTML = `<button type="button" class="bcard__close" aria-label="Cerrar la ficha">×</button>
+    <p class="bcard__eyebrow">Barrio · día ${day}</p><h3 class="bcard__name">${name}</h3>
+    <dl class="bcard__stats">
+      <div class="bcard__z"><dt>Zombies ahora</dt><dd>${fmt(zombies)}</dd></div>
+      <div class="bcard__b"><dt>Mordidos</dt><dd>${fmt(bitten)}</dd></div>
+      <div class="bcard__v"><dt>Vacunados</dt><dd>${fmt(vax)}</dd></div>
+    </dl><p class="bcard__note">${note}</p>`;
+  card.hidden = false;
+  card.querySelector(".bcard__close").addEventListener("click", () => { card.hidden = true; });
+  mapState.cardBarrio = name;
 }
 
 // How the city is doing on this day of the replayed run (exact counts).
