@@ -9,7 +9,9 @@ const COLORS = {
 const STRATEGY_COLORS = { ring_hubs: "#a8d672", ring: "#38e8ff", degree: "#ffb347", acquaintance: "#c9a0ff" };
 const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vaccine_start_day",
   "detection_prob", "detection_delay", "initial_cases", "runs", "strategy", "seed",
-  "latent_mean", "infectious_mean", "days"];
+  "latent_mean", "infectious_mean", "days",
+  "close_market", "close_schools", "closure_trigger", "budget", "market_cost", "school_cost"];
+const CHECKBOXES = new Set(["close_market", "close_schools"]);
 const MANTA = [-0.9677, -80.7089];
 const ECUADOR = [-1.6, -78.4];
 
@@ -105,21 +107,49 @@ function initIntro() {
     setTimeout(() => { intro.hidden = true; stopAnim(); }, reduce ? 0 : 700);
     $("#run").focus({ preventScroll: true });
   };
+  // Entering always starts the soundtrack; it can only be turned down in Settings.
   $("#enterSound").addEventListener("click", () => enter(true));
-  $("#enterQuiet").addEventListener("click", () => enter(false));
-  $("#soundToggle").addEventListener("click", async () => {
-    if (sound.isOn()) sound.stop(); else await sound.start();
-    updateSoundButton();
-  });
   $("#enterSound").focus();
+  initSettings();
 }
 
-function updateSoundButton() {
-  const on = sound.isOn();
-  const btn = $("#soundToggle");
-  btn.setAttribute("aria-pressed", String(on));
-  btn.textContent = on ? "Sonido encendido" : "Sonido apagado";
+function initSettings() {
+  const dialog = $("#settings");
+  const prefs = loadPrefs();
+  $("#setVolume").value = prefs.volume;
+  $("#volOut").textContent = pct(prefs.volume);
+  $("#setMotion").checked = prefs.motion;
+  document.body.classList.toggle("calm", !prefs.motion);
+  sound.setVolume(prefs.volume);
+  $("#settingsBtn").addEventListener("click", () => {
+    $("#setSound").checked = sound.isOn();
+    dialog.showModal();
+  });
+  $("#setSound").addEventListener("change", async (e) => {
+    if (e.target.checked) await sound.start(); else sound.stop();
+  });
+  $("#setVolume").addEventListener("input", (e) => {
+    const v = +e.target.value;
+    $("#volOut").textContent = pct(v);
+    sound.setVolume(v);
+    savePrefs({ volume: v });
+  });
+  $("#setMotion").addEventListener("change", (e) => {
+    document.body.classList.toggle("calm", !e.target.checked);
+    savePrefs({ motion: e.target.checked });
+  });
 }
+
+function loadPrefs() {
+  const defaults = { volume: 0.8, motion: true };
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem("plaga-prefs") || "{}") }; } catch { return defaults; }
+}
+
+function savePrefs(change) {
+  try { localStorage.setItem("plaga-prefs", JSON.stringify({ ...loadPrefs(), ...change })); } catch { /* private mode */ }
+}
+
+function updateSoundButton() {}
 
 // Intro background: houses of a dark city; a few catch the plague and it spreads.
 function introAnimation(canvas, reduce) {
@@ -170,6 +200,7 @@ function readForm() {
   const data = Object.fromEntries(new FormData(form));
   const out = {};
   for (const key of FIELDS) {
+    if (CHECKBOXES.has(key)) { out[key] = form.elements[key].checked; continue; }
     const raw = data[key];
     if (raw === undefined || raw === "") continue;
     out[key] = ["seed_location", "strategy"].includes(key) ? raw : Number(raw);
@@ -179,7 +210,9 @@ function readForm() {
 
 function setForm(values) {
   for (const key of FIELDS) {
-    if (values[key] !== undefined && form.elements[key]) form.elements[key].value = values[key];
+    if (values[key] === undefined || !form.elements[key]) continue;
+    if (CHECKBOXES.has(key)) form.elements[key].checked = values[key] === true || values[key] === "true";
+    else form.elements[key].value = values[key];
   }
 }
 
@@ -195,6 +228,9 @@ function updateOutputs() {
   $("#startOut").textContent = v.vaccine_start_day;
   $("#detOut").textContent = pct(v.detection_prob);
   $("#delayOut").textContent = v.detection_delay;
+  $("#trigOut").textContent = v.closure_trigger;
+  $("#mktCost").textContent = fmt(v.market_cost);
+  $("#schCost").textContent = fmt(v.school_cost);
   showInstantAnswer(v);
 }
 
@@ -293,6 +329,7 @@ function renderResult(data, seconds) {
   renderCurves(data);
   renderTable(data);
   renderCertificate(data, seconds);
+  renderPlans(data.closure_plans);
   loadMapRun(data);
 }
 
@@ -359,6 +396,19 @@ function renderCertificate(data, seconds) {
   $("#certEngine").textContent = c.engine_version;
   $("#certCommit").textContent = c.commit;
   $("#certTime").textContent = `${dec(seconds)} s`;
+}
+
+function renderPlans(cp) {
+  const panel = $("#plansPanel");
+  if (!cp) { panel.hidden = true; return; }
+  panel.hidden = false;
+  $("#plansText").textContent = cp.text;
+  $("#plansTable tbody").innerHTML = cp.plans.map((p) => `<tr class="${p.label === cp.best ? "is-best" : ""}">
+      <td>${p.label}${p.label === cp.best ? " · recomendado" : ""}</td>
+      <td class="num">${fmt(p.infected_mean)}</td>
+      <td class="num">${fmt(p.saved_vs_none)}</td>
+      <td class="num">${p.market ? `mercado ${dec(p.market_days)}` : ""}${p.market && p.schools ? " · " : ""}${p.schools ? `colegios ${dec(p.schools_days)}` : ""}${!p.market && !p.schools ? "—" : ""}</td>
+      <td class="num">${fmt(p.spent)}${cp.budget > 0 ? ` / ${fmt(cp.budget)}` : ""}</td></tr>`).join("");
 }
 
 async function copyLink() {
@@ -462,7 +512,7 @@ function prepareRun() {
   const sick = cfg.latent_mean + cfg.infectious_mean;
   const lastBite = bitten.reduce((m, p) => Math.max(m, p[2]), 0);
   mapState.run = {
-    bitten, vaccinated, latent: cfg.latent_mean, sick, label: run.label, counts: run.counts,
+    bitten, vaccinated, latent: cfg.latent_mean, sick, label: run.label, counts: run.counts, closed: run.closed,
     events: buildEvents(bitten, data, run.label),
   };
   mapState.lastDay = Math.min(cfg.days, Math.ceil(lastBite + sick + 2));
@@ -502,6 +552,14 @@ function buildEvents(bitten, data, label) {
   if (mapState.policy !== "none" && cfg.doses_per_day > 0) {
     events.push({ day: cfg.vaccine_start_day, text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). El comité aplica «${label}».` });
   }
+  const closedSeries = Array.isArray(data.map[mapState.policy].closed) ? data.map[mapState.policy].closed : [];
+  const places = ["el mercado central", "los colegios"];
+  for (let d = 1; d < closedSeries.length; d += 1) {
+    for (const k of [0, 1]) {
+      if (closedSeries[d][k] && !closedSeries[d - 1][k]) events.push({ day: d, text: `Día ${d}: el comité cierra ${places[k]}.` });
+      if (!closedSeries[d][k] && closedSeries[d - 1][k]) events.push({ day: d, text: `Día ${d}: reabren ${places[k]}.` });
+    }
+  }
   const marks = [0.01, 0.1, 0.25, 0.5];
   let k = 0;
   byDay.forEach((p, i) => {
@@ -511,7 +569,8 @@ function buildEvents(bitten, data, label) {
     }
   });
   const total = bitten.length;
-  const end = Math.min(cfg.days, Math.ceil(byDay.at(-1)[2] + cfg.latent_mean + cfg.infectious_mean));
+  const lastBite = byDay.length ? byDay[byDay.length - 1][2] : 0;
+  const end = Math.min(cfg.days, Math.ceil(lastBite + cfg.latent_mean + cfg.infectious_mean));
   events.push({ day: end, text: `Día ${end}: el último zombi fue exorcizado. En total ${fmt(total)} mordidos (≈ ${fmt(total * scale)} en Manta) con «${label}».` });
   return events.sort((a, b) => a.day - b.day);
 }
@@ -519,7 +578,7 @@ function buildEvents(bitten, data, label) {
 function play() {
   if (!mapState.run) return;
   if (mapState.day >= mapState.lastDay) mapState.day = 0;
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm")) {
     mapState.day = mapState.lastDay;
     drawPeople();
     return;
@@ -550,7 +609,7 @@ function pause() {
 // While paused, zombies keep breathing (a few frames per second is enough).
 function idle() {
   clearTimeout(mapState.idle);
-  if (mapState.playing || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (mapState.playing || matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm")) return;
   drawPeople();
   mapState.idle = setTimeout(idle, 120);
 }
@@ -670,6 +729,11 @@ function drawPeople() {
   $("#hudCity").textContent = pct(bittenSoFar / n);
   $("#daySlider").value = Math.floor(day);
   drawProgress(day);
+  const closedToday = (run.closed && run.closed[Math.max(0, Math.min(Math.floor(day) || 0, run.closed.length - 1))]) || [0, 0];
+  const badge = $("#hudClosed");
+  const names = [closedToday[0] ? "Mercado cerrado" : "", closedToday[1] ? "Colegios cerrados" : ""].filter(Boolean);
+  badge.hidden = names.length === 0;
+  badge.textContent = names.join(" · ");
   sound.setTension((zombies / n) * 10);
   const ev = run.events.filter((e) => e.day <= day).at(-1);
   const ticker = $("#ticker");
@@ -705,7 +769,8 @@ function drawProgress(day) {
   const run = mapState.run;
   if (!run?.counts) return;
   const counts = run.counts;
-  const d = Math.min(Math.floor(day), counts.length - 1);
+  const d = Math.max(0, Math.min(Math.floor(day) || 0, counts.length - 1));
+  if (!Array.isArray(counts[d])) return;
   const [S, E, I, R, V] = counts[d];
   const n = S + E + I + R + V;
   const parts = [["sano", S], ["vax", V], ["bitten", E], ["zombie", I], ["gone", R]];

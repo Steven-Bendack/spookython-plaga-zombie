@@ -8,6 +8,7 @@ let master = null;
 let heartTimer = 0;
 let playing = false;
 let heartRate = 1.1; // seconds between beats; the map speeds it up with the outbreak
+let volume = 0.8;    // set from Settings
 
 export function isOn() {
   return playing;
@@ -17,7 +18,7 @@ export async function start() {
   if (!ctx) build();
   await ctx.resume();
   playing = true;
-  fade(0.55, 2.5);
+  fade(0.6 * volume, 2.5);
   scheduleHeart();
 }
 
@@ -26,6 +27,11 @@ export function stop() {
   playing = false;
   fade(0, 0.8);
   clearTimeout(heartTimer);
+}
+
+export function setVolume(v) {
+  volume = Math.max(0, Math.min(1, v));
+  if (ctx && playing) fade(0.6 * volume, 0.3);
 }
 
 // 0 = calm city, 1 = city overrun: faster heart, brighter drone.

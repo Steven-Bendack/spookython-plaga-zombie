@@ -407,6 +407,13 @@ input[type="number"], select {
 
 /* Map details */
 .hud__stat--city strong { color: var(--pumpkin-2); }
+.hud__closed { align-self: center; color: #160d08 !important; background: var(--pumpkin) !important; border-color: var(--pumpkin) !important;
+  font: 700 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.closures { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; }
+.closures legend { margin-bottom: 12px; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--pumpkin); }
+.plans__text { margin-bottom: 12px; font-size: 15px; }
 .barrio-label { background: rgba(15, 12, 16, .55) !important; padding: 1px 5px !important; border-radius: 2px !important; }
 .dot--vax { background: none; position: relative; width: 11px; height: 11px; }
 .dot--vax::before, .dot--vax::after { content: ""; position: absolute; background: var(--vax); border-radius: 1px; }
@@ -457,4 +464,85 @@ input[type="number"], select {
   .map-hud { display: grid; grid-template-columns: repeat(3, auto); }
   .map-hud strong { font-size: 16px; }
   .progress__legend { gap: 4px 12px; font-size: 12px; }
+}
+
+/* ---------- Decoration: moon, skyline of Manta, bats, cobwebs, drips ---------- */
+.masthead { position: relative; overflow: hidden; padding-bottom: 62px; }
+.masthead > *:not(.masthead__web):not(.masthead__moon):not(.bats):not(.masthead__skyline) { position: relative; z-index: 2; }
+.masthead__skyline { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 54px; object-fit: cover; object-position: bottom; z-index: 1; opacity: .9; }
+.masthead__moon, .moon {
+  position: absolute; border-radius: 50%; z-index: 0;
+  background: radial-gradient(circle at 35% 35%, #fff4d6 0 30%, #f4d9a0 60%, #d9b06a 100%);
+  box-shadow: 0 0 60px 18px rgba(255, 196, 110, .18);
+}
+.masthead__moon { width: 58px; height: 58px; left: 430px; top: 22px; }
+.masthead__moon::after, .moon::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 62% 40%, rgba(160, 120, 70, .35) 0 8%, transparent 9%),
+              radial-gradient(circle at 40% 66%, rgba(160, 120, 70, .3) 0 6%, transparent 7%),
+              radial-gradient(circle at 70% 70%, rgba(160, 120, 70, .25) 0 4%, transparent 5%);
+}
+.masthead__web { position: absolute; top: 0; width: 150px; z-index: 1; pointer-events: none; }
+.masthead__web--left { left: 0; }
+.masthead__web--right { right: 0; transform: scaleX(-1); }
+.drip {
+  height: 18px; margin-top: -1px; position: relative; z-index: 1;
+  background:
+    radial-gradient(circle at 10px 0, #07050a 9px, transparent 10px) 0 0 / 60px 18px repeat-x,
+    radial-gradient(circle at 40px 0, #07050a 6px, transparent 7px) 0 0 / 90px 14px repeat-x;
+}
+.bats { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.bat { position: absolute; width: 42px; fill: #07050a; animation: fly 16s linear infinite; }
+.bat svg { width: 100%; display: block; animation: flap .35s ease-in-out infinite alternate; transform-origin: center; }
+.bat--1 { top: 20%; animation-delay: -2s; }
+.bat--2 { top: 38%; width: 30px; animation-duration: 21s; animation-delay: -9s; }
+.bat--3 { top: 12%; width: 24px; animation-duration: 25s; animation-delay: -15s; }
+.bats--header .bat { fill: #07050a; }
+@keyframes fly {
+  0% { transform: translate(-60px, 0); }
+  25% { transform: translate(25vw, -18px); }
+  50% { transform: translate(50vw, 12px); }
+  75% { transform: translate(75vw, -10px); }
+  100% { transform: translate(calc(100vw + 60px), 6px); }
+}
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
+
+/* Intro decorated */
+.intro .moon { width: min(28vw, 220px); height: min(28vw, 220px); top: 9%; right: 12%; }
+.intro__skyline { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 30vh; object-fit: cover; object-position: bottom; }
+.intro__title { text-shadow: 0 4px 0 #3a1406; }
+.btn--enter { font-size: 20px; padding: 18px 36px; min-width: 260px; letter-spacing: .02em; }
+.btn--enter:hover { filter: brightness(1.1); }
+
+/* Settings */
+.settings-btn {
+  font: 500 13px var(--body); color: var(--ink); background: transparent; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 3px; padding: 8px 12px; white-space: nowrap;
+}
+.settings-btn:hover { border-color: var(--pumpkin); }
+.settings { border: 1px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); padding: 0; width: min(92vw, 380px); }
+.settings::backdrop { background: rgba(5, 3, 7, .7); }
+.settings__body { display: grid; gap: 16px; padding: 22px; }
+.settings__title { font: 700 22px var(--display); font-stretch: 85%; }
+.switch { display: flex; gap: 12px; align-items: center; font-size: 15px; cursor: pointer; }
+.switch input { width: 20px; height: 20px; accent-color: var(--pumpkin); }
+
+/* "Calm" (animations off from Settings) */
+body.calm *, body.calm *::before, body.calm *::after { animation: none !important; transition: none !important; }
+body.calm .bats { display: none; }
+
+@media (max-width: 620px) {
+  .masthead__moon { width: 44px; height: 44px; left: auto; right: 18px; top: 18px; }
+  .masthead__web { width: 90px; }
+  .masthead__skyline { height: 44px; }
+  .masthead { padding-bottom: 50px; }
+  .intro .moon { top: 6%; right: 8%; }
+  .intro__skyline { height: 22vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bats { display: none; }
+}
+@media (min-width: 621px) {
+  .masthead { padding-bottom: 112px; }
+  .masthead__skyline { height: 128px; }
 }
