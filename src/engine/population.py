@@ -48,7 +48,7 @@ BARRIOS = (
     ("Urbirrios", -0.9860, -80.7150, 0.10),
     ("Barbasquillo", -0.9530, -80.7480, 0.07),
     ("San Mateo", -0.9560, -80.7880, 0.05),
-    ("Santa Marianita", -1.0070, -80.8060, 0.08),
+    ("Santa Marianita", -0.9800, -80.8420, 0.08),
 )
 BARRIO_NAMES = tuple(b[0] for b in BARRIOS)
 

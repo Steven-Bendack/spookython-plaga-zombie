@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from engine.population import BARRIOS  # noqa: E402
 
-BBOX = (-1.035, -80.83, -0.925, -80.66)  # south, west, north, east
+BBOX = (-1.035, -80.86, -0.925, -80.66)  # south, west, north, east
 QUERY = ('[out:json][timeout:90];way["highway"~"^(primary|secondary|tertiary|residential|'
          'unclassified|living_street|trunk)$"]({},{},{},{});out geom;').format(*BBOX)
 HOME_STREETS = {"residential", "living_street", "unclassified", "tertiary"}
