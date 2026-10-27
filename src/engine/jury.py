@@ -161,7 +161,7 @@ def frontier_text(points: list[dict], strategy: str) -> str:
     """Find the simplest rule (one or two thresholds) that describes the losses."""
     losses = np.array([p["fixed"]["outcome"] == "loss" for p in points])
     share_ok = 1 - losses.mean()
-    head = f"«{LABELS[strategy]}» gana o empata en el {share_ok:.0%} de los escenarios probados"
+    head = f"«{LABELS[strategy]}» como regla fija gana o empata en el {_pct(share_ok)} de los escenarios probados"
     if not losses.any():
         return head + " y no se encontró ninguna condición donde pierda contra Azar."
     (rule1, dim1), mask1 = _best_rule(points, losses, np.ones(len(points), dtype=bool))
@@ -176,14 +176,19 @@ def frontier_text(points: list[dict], strategy: str) -> str:
             f"({covered} de {int(losses.sum())} derrotas). En esas condiciones el torneo cambia de estrategia.")
 
 
+def _pct(x: float, digits: int = 0) -> str:
+    """Spanish style: 67 %, 0,2 %."""
+    return f"{x * 100:.{digits}f}".replace(".", ",") + " %"
+
+
 def auto_text(points: list[dict]) -> str:
     share = _shares([p["auto"]["outcome"] for p in points])
     text = (f"El torneo automático, que elige con semillas de entrenamiento y se juzga con semillas nuevas, "
-            f"gana en el {share['win']:.0%} de los escenarios, empata en el {share['tie']:.0%} "
-            f"y pierde en el {share['loss']:.0%}.")
+            f"gana en el {_pct(share['win'])} de los escenarios, empata en el {_pct(share['tie'])} "
+            f"y pierde en el {_pct(share['loss'])}.")
     if share["tie"]:
         text += (" Los empates son brotes donde ninguna vacunación cambia el resultado en más de "
-                 f"{TIE_SHARE:.1%} de la población (plaga muy contagiosa con pocas dosis).")
+                 f"{_pct(TIE_SHARE, 1)} de la población (plaga muy contagiosa con pocas dosis).")
     return text
 
 
@@ -216,5 +221,5 @@ def _fmt(dim: str, value: float) -> str:
     if dim == "detection_delay":
         return f"{value:.0f}"
     if dim == "vaccine_efficacy":
-        return f"{value:.0%}"
-    return f"{value:.2f}".rstrip("0").rstrip(".")
+        return _pct(value)
+    return f"{value:.2f}".rstrip("0").rstrip(".").replace(".", ",")

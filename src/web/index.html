@@ -173,8 +173,13 @@
           <h2>Modo Jurado</h2>
           <p class="hint">Un atacante automático busca los brotes sorpresa donde nuestra estrategia pierde contra Azar.</p>
         </div>
-        <p class="jury__frontier" id="frontier"></p>
+        <p class="jury__frontier" id="autoText"></p>
+        <p class="jury__fixed" id="frontier"></p>
         <div class="jury__shares" id="shares"></div>
+        <div class="segmented" role="group" aria-label="Qué evaluar en el gráfico">
+          <button type="button" class="segmented__btn" data-view="auto" aria-pressed="true">Torneo automático</button>
+          <button type="button" class="segmented__btn" data-view="fixed" aria-pressed="false">Regla fija</button>
+        </div>
         <div class="jury__grid">
           <div class="chart-box chart-box--square"><canvas id="juryChart" aria-label="Escenarios probados por el Modo Jurado"></canvas></div>
           <div>

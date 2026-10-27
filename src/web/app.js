@@ -8,11 +8,11 @@ const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vac
 
 const $ = (sel) => document.querySelector(sel);
 const form = $("#form");
-const state = { meta: null, defaults: null, map: null, jury: null, last: null, charts: {} };
+const state = { meta: null, defaults: null, map: null, jury: null, last: null, charts: {}, juryView: "auto" };
 
 // Thousands with a thin space (12 345): avoids "3.922" being read as a decimal.
 const fmt = (x) => Math.round(x).toLocaleString("en-US").replace(/,/g, " ");
-const pct = (x) => `${Math.round(x * 100)} %`;
+const pct = (x) => `${Math.round(x * 100)} %`;
 
 // ---------- bootstrapping ----------
 
@@ -45,6 +45,11 @@ async function init() {
   });
   $("#copyLink").addEventListener("click", copyLink);
   $("#runJury").addEventListener("click", runJury);
+  document.querySelectorAll(".segmented__btn").forEach((btn) => btn.addEventListener("click", () => {
+    state.juryView = btn.dataset.view;
+    document.querySelectorAll(".segmented__btn").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    renderJury(state.jury);
+  }));
 
   if (fromUrl.seed) runSimulation();
 }
@@ -142,7 +147,7 @@ function showInstantAnswer(v) {
   if (!cell) { box.hidden = true; return; }
   const label = labelOf(cell.best);
   box.hidden = false;
-  box.innerHTML = `Respuesta inmediata (mapa precalculado): <strong>${label}</strong>, gana a Azar en ${pct(cell.win_rate_vs_random)} de las corridas parecidas. Pulsa Recomendar para confirmarlo con tu semilla.`;
+  box.innerHTML = `Respuesta inmediata (mapa precalculado, ${state.map.runs_per_cell} corridas): <strong>${label}</strong>, gana a Azar en ${pct(cell.win_rate_vs_random)} de ellas. Recomendar lo afina con tu semilla y 100 corridas.`;
 }
 
 function labelOf(name) {
@@ -274,19 +279,21 @@ function renderJury(jury) {
     $("#frontier").textContent = "Todavía no hay un ataque guardado. Pulsa el botón para lanzar uno.";
     return;
   }
-  $("#frontier").textContent = jury.frontier_text;
+  $("#autoText").textContent = jury.auto_text || "";
+  $("#frontier").textContent = `Contraejemplo: ${jury.frontier_text}`;
   const bar = (label, share) => `<div class="share"><span>${label}</span><span class="share__bar">
       <span style="width:${share.win * 100}%;background:${COLORS.strategy}" title="Gana ${pct(share.win)}"></span>
       <span style="width:${share.tie * 100}%;background:${COLORS.tie}" title="Empata ${pct(share.tie)}"></span>
       <span style="width:${share.loss * 100}%;background:${COLORS.zombie}" title="Pierde ${pct(share.loss)}"></span>
     </span></div>`;
   $("#shares").innerHTML =
-    bar(`${jury.strategy_label} fija: gana ${pct(jury.fixed_share.win)}`, jury.fixed_share) +
-    bar(`Torneo automático: gana ${pct(jury.auto_share.win)}`, jury.auto_share);
+    bar(`Torneo automático: pierde ${pct(jury.auto_share.loss)}`, jury.auto_share) +
+    bar(`Regla fija (${jury.strategy_label}): pierde ${pct(jury.fixed_share.loss)}`, jury.fixed_share);
 
+  const view = state.juryView;
   const groups = { win: [], tie: [], loss: [] };
   for (const p of jury.points) {
-    groups[p.fixed.outcome].push({ x: p.condition.r0, y: p.condition.dose_factor, p });
+    groups[p[view].outcome].push({ x: p.condition.r0, y: p.condition.dose_factor, p });
   }
   const ds = (key, label, color) => ({ label, data: groups[key], backgroundColor: color, pointRadius: 6, pointHoverRadius: 8 });
   drawChart("juryChart", {
@@ -300,7 +307,9 @@ function renderJury(jury) {
       label: (ctx) => {
         const p = ctx.raw.p;
         const c = p.condition;
-        return `R0 ${c.r0.toFixed(1)} · dosis ${c.dose_factor.toFixed(2)}× · eficacia ${pct(c.vaccine_efficacy)} · inicio ${c.seed_location} · detección ${c.detection_delay} d → ${p.fixed.saved_mean > 0 ? "+" : ""}${fmt(p.fixed.saved_mean)} vs Azar (torneo: ${labelOf(p.auto.pick)})`;
+        const r = p[view];
+        const who = view === "auto" ? `torneo eligió ${labelOf(p.auto.pick)}` : jury.strategy_label;
+        return `R0 ${c.r0.toFixed(1)} · dosis ${c.dose_factor.toFixed(2)}× · eficacia ${pct(c.vaccine_efficacy)} · inicio ${c.seed_location} · detección ${c.detection_delay} d → ${who}: ${r.saved_mean > 0 ? "+" : ""}${fmt(r.saved_mean)} vs Azar`;
       },
     }),
   });

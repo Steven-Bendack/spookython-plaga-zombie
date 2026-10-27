@@ -29,3 +29,6 @@ Thumbs.db
 # Local outputs
 *.log
 prof.out
+
+# Local agent tooling
+.atl/
