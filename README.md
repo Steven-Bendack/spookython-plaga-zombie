@@ -4,6 +4,8 @@
 
 > URL pública en AWS: _pendiente de despliegue (falta la cuenta con Budget)_ · Vista previa en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
 
+**Pitch (PDF, 10 diapositivas):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
+
 ![Arquitectura](docs/arquitectura.png)
 
 ## Qué la hace distinta
@@ -14,7 +16,7 @@
 4. **Realismo de información.** El comité solo ve los Zombies **detectados** (60 %, con 2 días de retraso). No ve a los Mordidos. Las dosis que se pierden en ellos se muestran, no se esconden.
 5. **Calibrado con datos reales de Manta.** El exceso de muertes de 2020 (Registro Civil) muestra que la primera ola crecía 8,4 % por día; el modelo reproduce ese crecimiento con **R0 = 2,35** y la forma de la ola coincide (5 semanas sobre la mitad del pico en la realidad, 4 en el modelo).
 6. **Evidencia real frente a ficción.** El mismo motor corre COVID-19 Manta 2020, influenza 2009, el zombi clásico del cine ([Alemi et al. 2015](https://arxiv.org/abs/1503.01104)), The Walking Dead y Guerra Mundial Z. Cada uno pide una estrategia distinta.
-7. **Mapa animado de Manta.** Vuelo de Ecuador a Manta y, día por día, cada persona mordida se enciende sobre el mapa real, con contadores y titulares de lo que pasa en la corrida ("la plaga llega a Tarqui", "ya va el 25 % de la ciudad"…). Se compara sin intervenir, azar y la estrategia.
+7. **Mapa animado de Manta.** Vuelo de Ecuador a Manta y, día por día, cada persona mordida de la **corrida típica** (la mediana de personas salvadas) se enciende sobre el mapa real, con contadores y titulares de lo que pasa en la corrida ("la plaga llega a Tarqui", "ya va el 25 % de la ciudad"…). Se compara sin intervenir, azar y la estrategia.
 8. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
 
 ## El modelo en un minuto

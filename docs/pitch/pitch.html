@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La Plaga Zombie · Pitch</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Creepster&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: 1600px 900px; margin: 0; }
+  :root { --night:#0d0714; --card:#1a1027; --line:#352447; --ink:#f3ecfa; --soft:#b4a4c6;
+          --pumpkin:#ff7518; --pumpkin2:#ffb347; --ecto:#7cff4f; --blood:#ff3b3b; --vax:#38e8ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--night); color: var(--ink); font: 400 24px/1.4 "IBM Plex Sans", sans-serif; }
+  .slide { width: 1600px; height: 900px; padding: 64px 80px; position: relative; overflow: hidden; page-break-after: always;
+           background: radial-gradient(900px 500px at 90% -10%, rgba(255,117,24,.18), transparent 60%), var(--night); }
+  .eyebrow { font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--pumpkin2); }
+  h1 { font: 400 120px/0.95 "Creepster", cursive; color: var(--pumpkin); margin: 10px 0 20px; text-shadow: 0 0 30px rgba(255,117,24,.5); }
+  h2 { font: 800 60px/1.02 "Archivo", sans-serif; font-stretch: 72%; text-transform: uppercase; margin: 10px 0 24px; }
+  h2 em { font-style: normal; color: var(--ecto); }
+  h2 .red { color: var(--blood); }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  .soft { color: var(--soft); }
+  .big { font: 800 120px/1 "Archivo"; font-stretch: 70%; color: var(--ecto); }
+  .big--red { color: var(--blood); }
+  .label { font-size: 20px; color: var(--soft); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .shot { width: 100%; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px 28px; }
+  table { border-collapse: collapse; width: 100%; font-size: 24px; }
+  th { text-align: left; font: 600 16px "IBM Plex Mono"; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 14px; border-bottom: 1px solid var(--line); }
+  td.num { text-align: right; font-family: "IBM Plex Mono"; }
+  td strong { color: var(--ecto); }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 30px; display: flex; justify-content: space-between; font: 500 15px "IBM Plex Mono"; color: var(--soft); }
+  .foot img { height: 26px; vertical-align: middle; margin-right: 8px; }
+  ul { margin: 0; padding-left: 28px; } li { margin-bottom: 10px; }
+  .tag { display:inline-block; font: 700 14px "IBM Plex Mono"; padding: 3px 8px; border-radius: 5px; color: var(--night); }
+  .tag--real { background: var(--vax); } .tag--fic { background: var(--blood); }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide">
+  <p class="eyebrow">SpookyThon 2026 · Track B · ULEAM</p>
+  <h1>La Plaga Zombie</h1>
+  <p style="font-size:34px;max-width:40ch">El Comité de Contención de Manta: a quién vacunar, cuándo y por qué, demostrado con cientos de corridas pareadas.</p>
+  <div style="display:flex;gap:28px;align-items:center;margin-top:60px">
+    <img src="../../src/web/assets/mineral-halloween.svg" style="height:120px" alt="">
+    <div><div style="font:700 30px Archivo">Mineral Studio</div><div class="soft">plaga-zombie-manta.vercel.app · github.com/Steven-Bendack/spookython-plaga-zombie</div></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <p class="eyebrow">El escenario</p>
+  <h2>Una Manta sintética de <em>10 000 personas</em></h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li>Edades y hogares del <strong>Censo INEC 2022</strong> (271 145 habitantes, 3,2 por hogar): 1 agente = 27 mantenses.</li>
+        <li>Se contagian donde se ven: hogar, aula de 30, trabajo de 10, bus, <strong>mercado central</strong> con vendedores, 10 barrios.</li>
+        <li>Plaga SEIR: Sano → <span style="color:#ffc94d">Mordido</span> (3 días) → <span style="color:var(--blood)">Zombie</span> (5 días) → Exorcizado.</li>
+        <li>Cada día llegan <strong>20 vacunas</strong> (0,2 % de la ciudad). El comité solo ve a los Zombies <strong>detectados</strong>: las dosis que caen en Mordidos invisibles se pierden y las mostramos.</li>
+      </ul>
+    </div>
+    <img class="shot" src="img/map_none.png" alt="Mapa de Manta sin intervenir">
+  </div>
+  <div class="foot"><span>Supuestos con fuente: docs/supuestos.md</span><span>2</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <p class="eyebrow">Evidencia real</p>
+  <h2>Calibrado con la <em>ola real</em> de Manta 2020</h2>
+  <div class="grid2">
+    <img class="shot" src="img/real.png" alt="Exceso de muertes en Manta 2020 y curva del modelo">
+    <div>
+      <p>Exceso de muertes del <strong>Registro Civil</strong>: Manta pasó de 30 a <strong>169 muertes por semana</strong> en abril de 2020 (≈ 957 de más).</p>
+      <p>La ola crecía <strong>8,4 % por día</strong>. Nuestra Manta reproduce ese ritmo con</p>
+      <div class="big">R0 = 2,35</div>
+      <p class="soft">Y la forma coincide: 5 semanas sobre la mitad del pico en la realidad, 4 en el modelo.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Datos: Registro Civil vía ecuacovid (MIT)</span><span>3</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <p class="eyebrow">La estrategia</p>
+  <h2>No es una regla: es un <em>comité que elige</em></h2>
+  <div class="grid2">
+    <div>
+      <p>Al pulsar <strong>Recomendar</strong>, Nada, Azar y 4 estrategias corren <strong>con la misma suerte</strong> (números aleatorios comunes) y se comparan corrida por corrida:</p>
+      <ul>
+        <li><strong>Más conectados:</strong> primero quien más gente ve cada día.</li>
+        <li><strong>Conocido:</strong> elige a alguien al azar y vacuna a un contacto suyo.</li>
+        <li><strong>Anillo:</strong> vacuna alrededor de cada caso detectado.</li>
+        <li><strong>Anillo + conectados:</strong> anillo primero, el resto a los más conectados.</li>
+      </ul>
+      <p class="soft">Gana la que más salva en la corrida típica (mediana), no en una corrida de suerte.</p>
+    </div>
+    <img class="shot" src="img/verdict.png" alt="Recomendación">
+  </div>
+  <div class="foot"><span>Semilla 2026 · 100 corridas por política</span><span>4</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <p class="eyebrow">Impacto</p>
+  <h2>Con la semilla 2026: <em>3 922 contagios evitados</em></h2>
+  <div class="grid2" style="grid-template-columns:0.8fr 1.2fr;gap:40px">
+    <div style="display:grid;gap:18px">
+      <div class="card"><div class="big" style="font-size:84px">3 922</div><div class="label">contagios evitados frente a no hacer nada (90 % de las corridas: 889 a 6 510)</div></div>
+      <div class="card"><div class="big" style="font-size:84px">2 697</div><div class="label">más que vacunar al azar con las mismas dosis (IC 95 %: 2 254 a 3 141)</div></div>
+      <div class="card"><div class="big" style="font-size:84px;color:var(--pumpkin)">106 mil</div><div class="label">mantenses protegidos a escala real · gana a Azar en 95 de 100 semillas</div></div>
+    </div>
+    <img class="shot" src="img/map_strategy.png" alt="Mapa con la estrategia">
+  </div>
+  <div class="foot"><span>Corrida típica en el mapa: 406 mordidos al día 68 con la estrategia</span><span>5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <p class="eyebrow">Brote Sorpresa</p>
+  <h2>Los 4 cambios del jurado, <em>ya probados</em></h2>
+  <table>
+    <thead><tr><th>Condición</th><th>Recomendación</th><th class="num">Salvados vs Nada</th><th class="num">Salvados vs Azar</th><th class="num">Gana a Azar</th></tr></thead>
+    <tbody>
+      <tr><td>Escenario base</td><td><strong>Anillo + conectados</strong></td><td class="num">3 922</td><td class="num">2 697</td><td class="num">95 %</td></tr>
+      <tr><td>El doble de contagiosa (R0 4)</td><td><strong>Conocido</strong></td><td class="num">571</td><td class="num">45</td><td class="num">92 %</td></tr>
+      <tr><td>La mitad de las vacunas</td><td><strong>Más conectados</strong></td><td class="num">1 364</td><td class="num">759</td><td class="num">99 %</td></tr>
+      <tr><td>Empieza en el mercado</td><td><strong>Anillo + conectados</strong></td><td class="num">4 729</td><td class="num">3 438</td><td class="num">99 %</td></tr>
+      <tr><td>Vacuna que cubre a medias (50 %)</td><td><strong>Más conectados</strong></td><td class="num">1 453</td><td class="num">781</td><td class="num">99 %</td></tr>
+    </tbody>
+  </table>
+  <p class="soft" style="margin-top:24px">Un toque en la interfaz y la respuesta aparece al instante (mapa de decisión precalculado); luego se confirma en vivo con la semilla del jurado.</p>
+  <div class="foot"><span>Semilla 2026 · 100 corridas por política</span><span>6</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <p class="eyebrow">Modo Jurado</p>
+  <h2>Nos atacamos solos: <span class="red">49 brotes sorpresa</span></h2>
+  <div class="grid2">
+    <div>
+      <p>Un atacante automático busca dónde perdemos contra Azar (R0, dosis, eficacia, lugar de inicio, retraso de detección).</p>
+      <div style="display:flex;gap:40px;margin:20px 0">
+        <div><div class="big big--red">76 %</div><div class="label">derrotas de la mejor regla fija (cuando R0 ≥ 2,3)</div></div>
+        <div><div class="big">0 %</div><div class="label">derrotas del comité automático</div></div>
+      </div>
+      <p class="soft">El comité elige con semillas de entrenamiento y se juzga con semillas nuevas: no hace trampa. Los empates (33 %) son brotes donde ninguna vacuna cambia nada.</p>
+    </div>
+    <img class="shot" src="img/jury.png" alt="Modo Jurado">
+  </div>
+  <div class="foot"><span>Por eso recomendamos el comité, no una regla</span><span>7</span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <p class="eyebrow">Ficción frente a realidad</p>
+  <h2>¿Y si fuera <em>The Walking Dead</em> o <span class="red">Guerra Mundial Z</span>?</h2>
+  <table>
+    <thead><tr><th>Escenario</th><th class="num">R0</th><th class="num">Cae sin intervenir</th><th>Mejor estrategia</th><th class="num">Gana a Azar</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag tag--real">REAL</span> COVID-19 · Manta 2020</td><td class="num">2,35</td><td class="num">72 %</td><td><strong>Más conectados</strong></td><td class="num">100 %</td></tr>
+      <tr><td><span class="tag tag--real">REAL</span> Influenza H1N1 · 2009</td><td class="num">1,46</td><td class="num">43 %</td><td><strong>Anillo + conectados</strong></td><td class="num">95 %</td></tr>
+      <tr><td><span class="tag tag--fic">FICCIÓN</span> Zombi clásico (Alemi et al. 2015)</td><td class="num">1,25</td><td class="num">29 %</td><td><strong>Anillo</strong></td><td class="num">100 %</td></tr>
+      <tr><td><span class="tag tag--fic">FICCIÓN</span> The Walking Dead</td><td class="num">1,25</td><td class="num">27 %</td><td><strong>Anillo</strong></td><td class="num">100 %</td></tr>
+      <tr><td><span class="tag tag--fic">FICCIÓN</span> Guerra Mundial Z</td><td class="num">6</td><td class="num">94 %</td><td>Ninguna alcanza</td><td class="num">50 %</td></tr>
+    </tbody>
+  </table>
+  <p class="soft" style="margin-top:24px">Zombis lentos: el anillo los encierra. Zombis rápidos: con 20 vacunas al día no hay estrategia que salve Manta; hacen falta otras medidas. Cada plaga pide una respuesta distinta.</p>
+  <div class="foot"><span>Alemi, Bierbaum, Myers y Sethna, Physical Review E (2015): α = 0,8 ajustado a películas</span><span>8</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <p class="eyebrow">Cómo está construido</p>
+  <h2>AWS, seguro y <em>reproducible</em></h2>
+  <div class="grid2">
+    <img class="shot" src="../arquitectura.png" alt="Arquitectura">
+    <div>
+      <ul>
+        <li>CloudFront + S3 privado + HTTP API con límites + Lambda que reparte el trabajo en paralelo; Step Functions Distributed Map para miles de corridas.</li>
+        <li>Motor en Python puro: misma semilla ⇒ mismo resultado en local y en AWS (lo prueba un test).</li>
+        <li>36 pruebas: reproducibilidad, conservación, nunca vacunar a un detectado, mismas dosis para Azar, calibración ±10 %.</li>
+        <li>Costo: ≈ USD 0,003 por recomendación; ≈ USD 0,25 al mes con la capa gratuita.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Certificado: hash + semilla + commit en cada resultado</span><span>9</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <p class="eyebrow">Con honestidad</p>
+  <h2>Límites y <em>lo que sigue</em></h2>
+  <div class="grid2" style="align-items:start">
+    <div class="card">
+      <p style="font-weight:600">Limitaciones</p>
+      <ul class="soft">
+        <li>La red de contactos es sintética (proporciones del censo, no movilidad real).</li>
+        <li>Vacuna todo o nada, sin muertes ni hospitales.</li>
+        <li>El R0 calibrado incluye la cuarentena de marzo de 2020.</li>
+        <li>Pasos de un día: no captura conversiones de segundos.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p style="font-weight:600">Siguiente paso</p>
+      <ul class="soft">
+        <li>Cierres de mercado y colegios con presupuesto (la red ya separa las capas).</li>
+        <li>Dengue en Manabí con modelo de mosquito.</li>
+        <li>Informe para el alcalde generado en lenguaje simple.</li>
+      </ul>
+    </div>
+  </div>
+  <p style="font-size:36px;margin-top:50px">Que el jurado elija la semilla. <span style="color:var(--ecto)">El comité responde.</span></p>
+  <div class="foot"><span><img src="../../src/web/assets/mineral-halloween.svg" alt="">Mineral Studio</span><span>10</span></div>
+</section>
+
+</body>
+</html>
