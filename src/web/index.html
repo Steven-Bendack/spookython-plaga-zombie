@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Plaga Zombie · Manta</title>
   <meta name="description" content="Comité de Contención de Manta: simula la plaga sobre el mapa de la ciudad, compara estrategias de vacunación contra no hacer nada y contra el azar, y pon a prueba la recomendación.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,12 +13,10 @@
   <link rel="icon" href="assets/mineral-halloween.svg" type="image/svg+xml">
 </head>
 <body>
+  <!-- Intro: the planet, then the descent onto Manta -->
   <div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
-    <canvas class="intro__canvas" id="introCanvas" aria-hidden="true"></canvas>
-    <div class="moon" aria-hidden="true"></div>
-    <div class="bats" aria-hidden="true"><span class="bat bat--1"><svg viewBox="0 0 64 28" aria-hidden="true"><path d="M32 10c2-4 6-5 8-2 6-6 16-8 24 0-6-1-10 1-12 6-3-3-7-3-10 1-2-3-6-3-8 1-1-3-1-5-2-6-1 1-1 3-2 6-2-4-6-4-8-1-3-4-7-4-10-1-2-5-6-7-12-6 8-8 18-6 24 0 2-3 6-2 8 2z"/></svg></span><span class="bat bat--2"><svg viewBox="0 0 64 28" aria-hidden="true"><path d="M32 10c2-4 6-5 8-2 6-6 16-8 24 0-6-1-10 1-12 6-3-3-7-3-10 1-2-3-6-3-8 1-1-3-1-5-2-6-1 1-1 3-2 6-2-4-6-4-8-1-3-4-7-4-10-1-2-5-6-7-12-6 8-8 18-6 24 0 2-3 6-2 8 2z"/></svg></span><span class="bat bat--3"><svg viewBox="0 0 64 28" aria-hidden="true"><path d="M32 10c2-4 6-5 8-2 6-6 16-8 24 0-6-1-10 1-12 6-3-3-7-3-10 1-2-3-6-3-8 1-1-3-1-5-2-6-1 1-1 3-2 6-2-4-6-4-8-1-3-4-7-4-10-1-2-5-6-7-12-6 8-8 18-6 24 0 2-3 6-2 8 2z"/></svg></span></div>
-    <img class="intro__skyline" src="assets/manta-skyline.svg" alt="" aria-hidden="true">
-    <div class="intro__content">
+    <canvas class="intro__globe" id="globe" aria-hidden="true"></canvas>
+    <div class="intro__content" id="introContent">
       <p class="eyebrow">Manta · Comité de Contención</p>
       <h1 class="intro__title" id="introTitle">La Plaga Zombie</h1>
       <p class="intro__text">Algo muerde en Manta. Hay pocas vacunas y cada día cuenta.<br>Tú decides a quién se las ponemos.</p>
@@ -27,8 +25,13 @@
       </div>
       <p class="intro__hint">Con sonido: mejor con audífonos. Puedes bajarlo en ⚙ Configuración.</p>
     </div>
+    <div class="intro__target" id="introTarget" hidden>
+      <p class="intro__coords">0° 58′ S · 80° 42′ O</p>
+      <p class="intro__place">Manta, Ecuador</p>
+      <p class="intro__step" id="introStep">Fijando el objetivo…</p>
+    </div>
   </div>
-  
+
   <dialog class="settings" id="settings" aria-labelledby="settingsTitle">
     <form method="dialog" class="settings__body">
       <h2 class="settings__title" id="settingsTitle">Configuración</h2>
@@ -39,148 +42,170 @@
       </label>
       <label class="switch"><input type="checkbox" id="setMotion" checked><span>Animaciones y efectos</span></label>
       <p class="hint">La música se genera en vivo en tu navegador: no usa archivos ni canciones con derechos.</p>
+      <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
+        <img src="assets/mineral-halloween.svg" alt="" width="36" height="38">
+        <span>Hecho por <strong>Mineral Studio</strong> · SpookyThon 2026, ULEAM</span>
+      </a>
       <button class="btn btn--primary" value="close">Listo</button>
     </form>
   </dialog>
 
-  <header class="masthead">
-    <img class="masthead__web masthead__web--left" src="assets/cobweb.svg" alt="" aria-hidden="true">
-    <img class="masthead__web masthead__web--right" src="assets/cobweb.svg" alt="" aria-hidden="true">
-    <div class="masthead__moon" aria-hidden="true"></div>
-    <div class="bats bats--header" aria-hidden="true"><span class="bat bat--1"><svg viewBox="0 0 64 28" aria-hidden="true"><path d="M32 10c2-4 6-5 8-2 6-6 16-8 24 0-6-1-10 1-12 6-3-3-7-3-10 1-2-3-6-3-8 1-1-3-1-5-2-6-1 1-1 3-2 6-2-4-6-4-8-1-3-4-7-4-10-1-2-5-6-7-12-6 8-8 18-6 24 0 2-3 6-2 8 2z"/></svg></span><span class="bat bat--2"><svg viewBox="0 0 64 28" aria-hidden="true"><path d="M32 10c2-4 6-5 8-2 6-6 16-8 24 0-6-1-10 1-12 6-3-3-7-3-10 1-2-3-6-3-8 1-1-3-1-5-2-6-1 1-1 3-2 6-2-4-6-4-8-1-3-4-7-4-10-1-2-5-6-7-12-6 8-8 18-6 24 0 2-3 6-2 8 2z"/></svg></span></div>
-    <img class="masthead__skyline" src="assets/manta-skyline.svg" alt="" aria-hidden="true">
-    <div class="masthead__brand">
-      <div>
-        <p class="eyebrow">Comité de Contención de Manta</p>
-        <h1 class="title">La Plaga Zombie</h1>
+  <div class="game" id="game">
+    <!-- The map is the whole screen -->
+    <div id="map" class="map" role="img" aria-label="Mapa de Manta con los casos de la corrida típica"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- Top: brand, live news, map view -->
+    <header class="topbar ui">
+      <div class="brand">
+        <p class="brand__title">La Plaga Zombie</p>
+        <p class="brand__sub">Comité de Contención · Manta · <span id="mapRun">sin simular</span></p>
       </div>
+      <div class="ticker" aria-live="polite"><span class="ticker__tag">EN VIVO</span><span class="ticker__text" id="ticker">Manta duerme tranquila… por ahora.</span></div>
+      <div class="topbar__right">
+        <div class="segmented segmented--float" role="group" aria-label="Qué corrida ver en el mapa" id="mapPolicy">
+          <button type="button" class="segmented__btn" data-policy="none" aria-pressed="true">Sin intervenir</button>
+          <button type="button" class="segmented__btn" data-policy="random" aria-pressed="false">Azar</button>
+          <button type="button" class="segmented__btn" data-policy="strategy" aria-pressed="false">Estrategia</button>
+        </div>
+        <div class="segmented segmented--float segmented--small" role="group" aria-label="Tipo de mapa" id="mapTiles">
+          <button type="button" class="segmented__btn" data-tiles="dark" aria-pressed="true">Noche</button>
+          <button type="button" class="segmented__btn" data-tiles="sat" aria-pressed="false">Satélite</button>
+        </div>
+        <button type="button" class="icon-btn" id="settingsBtn" aria-haspopup="dialog" aria-label="Configuración" title="Configuración">⚙</button>
+      </div>
+    </header>
+
+    <aside class="bcard ui" id="barrioCard" hidden aria-live="polite"></aside>
+
+    <div class="loading" id="loading" hidden role="status">
+      <div class="loading__ring" aria-hidden="true"></div>
+      <p class="loading__title">Simulando la plaga</p>
+      <p class="loading__text" id="loadingText">Corriendo todas las estrategias con la misma semilla…</p>
     </div>
-    <div class="masthead__side">
-      <p class="masthead__lede">Cada día llegan pocas vacunas. Aquí probamos a quién ponérselas: simulamos la plaga cien veces por estrategia, con la misma suerte para todas, y comparamos contra no hacer nada y contra repartirlas al azar.</p>
-      <button type="button" class="settings-btn" id="settingsBtn" aria-haspopup="dialog">⚙ Configuración</button>
-      <a class="maker" href="https://mineral-ec.com" target="_blank" rel="noopener">
-        <img src="assets/mineral-halloween.svg" alt="" width="44" height="46">
-        <span>Hecho por<br><strong>Mineral Studio</strong></span>
-      </a>
-    </div>
-  </header>
-  <div class="drip" aria-hidden="true"></div>
 
-  <div class="layout">
-    <!-- Controls -->
-    <aside class="panel controls" aria-label="Condiciones del brote">
-      <section class="controls__block">
-        <h2 class="controls__title">Brote sorpresa</h2>
-        <p class="hint">Toca el cambio que pide el jurado y luego pulsa <strong>Recomendar</strong>.</p>
-        <div class="presets" id="presets"></div>
-      </section>
+    <!-- Left drawer: conditions -->
+    <aside class="drawer drawer--left ui" id="panel-controls" aria-label="Condiciones del brote">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Condiciones</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body controls">
+        <section class="controls__block">
+          <h3 class="controls__title">Brote sorpresa</h3>
+          <p class="hint">Toca el cambio que pide el jurado y luego pulsa <strong>Recomendar</strong>.</p>
+          <div class="presets" id="presets"></div>
+        </section>
 
-      <form id="form" class="controls__block" autocomplete="off">
-        <h2 class="controls__title">Condiciones</h2>
+        <form id="form" class="controls__block" autocomplete="off">
+          <h3 class="controls__title">Contagio y vacunas</h3>
 
-        <label class="field">
-          <span class="field__label">Contagio (R0) <output id="r0Out"></output></span>
-          <input type="range" name="r0" min="0" max="8" step="0.05">
-          <span class="field__help">Personas que contagia un Zombie en una ciudad sin defensas.</span>
-        </label>
+          <label class="field">
+            <span class="field__label">Contagio (R0) <output id="r0Out"></output></span>
+            <input type="range" name="r0" min="0" max="8" step="0.05">
+            <span class="field__help">Personas que contagia un Zombie en una ciudad sin defensas.</span>
+          </label>
 
-        <label class="field">
-          <span class="field__label">Vacunas por día <output id="dosesOut"></output></span>
-          <input type="range" name="doses_per_day" min="0" max="200" step="1">
-          <span class="field__help" id="dosesHelp"></span>
-        </label>
+          <label class="field">
+            <span class="field__label">Vacunas por día <output id="dosesOut"></output></span>
+            <input type="range" name="doses_per_day" min="0" max="200" step="1">
+            <span class="field__help" id="dosesHelp"></span>
+          </label>
 
-        <label class="field">
-          <span class="field__label">Eficacia de la vacuna <output id="effOut"></output></span>
-          <input type="range" name="vaccine_efficacy" min="0" max="1" step="0.05">
-        </label>
+          <label class="field">
+            <span class="field__label">Eficacia de la vacuna <output id="effOut"></output></span>
+            <input type="range" name="vaccine_efficacy" min="0" max="1" step="0.05">
+          </label>
 
-        <label class="field">
-          <span class="field__label">Dónde empieza</span>
-          <select name="seed_location" id="seedLocation"></select>
-        </label>
+          <label class="field">
+            <span class="field__label">Dónde empieza</span>
+            <select name="seed_location" id="seedLocation"></select>
+          </label>
 
-        <fieldset class="closures">
-          <legend class="controls__title">Cierres y presupuesto</legend>
-          <label class="check"><input type="checkbox" name="close_market"> Cerrar el mercado central</label>
-          <label class="check"><input type="checkbox" name="close_schools"> Cerrar los colegios</label>
-          <label class="field">
-            <span class="field__label">Se cierra con <output id="trigOut"></output> zombis detectados</span>
-            <input type="range" name="closure_trigger" min="1" max="100" step="1">
-          </label>
-          <label class="field">
-            <span class="field__label">Presupuesto total</span>
-            <input type="number" name="budget" min="0" step="500" inputmode="numeric">
-            <span class="field__help">En unidades: 1 dosis = 1. Un día de mercado cerrado = <span id="mktCost"></span>; de colegios = <span id="schCost"></span>. 0 = sin límite.</span>
-          </label>
-        </fieldset>
+          <fieldset class="closures">
+            <legend class="controls__title">Cierres y presupuesto</legend>
+            <label class="check"><input type="checkbox" name="close_market"> Cerrar el mercado central</label>
+            <label class="check"><input type="checkbox" name="close_schools"> Cerrar los colegios</label>
+            <label class="field">
+              <span class="field__label">Se cierra con <output id="trigOut"></output> zombis detectados</span>
+              <input type="range" name="closure_trigger" min="1" max="100" step="1">
+            </label>
+            <label class="field">
+              <span class="field__label">Presupuesto total</span>
+              <input type="number" name="budget" min="0" step="500" inputmode="numeric">
+              <span class="field__help">En unidades: 1 dosis = 1. Un día de mercado cerrado = <span id="mktCost"></span>; de colegios = <span id="schCost"></span>. 0 = sin límite.</span>
+            </label>
+          </fieldset>
 
-        <details class="more">
-          <summary>Más parámetros</summary>
-          <label class="field">
-            <span class="field__label">Costo de un día de mercado cerrado</span>
-            <input type="number" name="market_cost" min="0" step="5">
-          </label>
-          <label class="field">
-            <span class="field__label">Costo de un día de colegios cerrados</span>
-            <input type="number" name="school_cost" min="0" step="5">
-          </label>
-          <label class="field">
-            <span class="field__label">Días como Mordido <output id="latentOut"></output></span>
-            <input type="range" name="latent_mean" min="0.5" max="14" step="0.5">
-          </label>
-          <label class="field">
-            <span class="field__label">Días como Zombie <output id="infOut"></output></span>
-            <input type="range" name="infectious_mean" min="1" max="21" step="0.5">
-          </label>
-          <label class="field">
-            <span class="field__label">Llegan las vacunas el día <output id="startOut"></output></span>
-            <input type="range" name="vaccine_start_day" min="0" max="40" step="1">
-          </label>
-          <label class="field">
-            <span class="field__label">Zombies detectados <output id="detOut"></output></span>
-            <input type="range" name="detection_prob" min="0" max="1" step="0.05">
-          </label>
-          <label class="field">
-            <span class="field__label">Días hasta detectar <output id="delayOut"></output></span>
-            <input type="range" name="detection_delay" min="0" max="10" step="1">
-          </label>
-          <label class="field">
-            <span class="field__label">Casos iniciales</span>
-            <input type="number" name="initial_cases" min="1" max="200">
-          </label>
-          <label class="field">
-            <span class="field__label">Días simulados</span>
-            <input type="number" name="days" min="10" max="365" step="10">
-          </label>
-          <label class="field">
-            <span class="field__label">Corridas por política</span>
-            <input type="number" name="runs" min="10" max="400" step="10">
-          </label>
-          <label class="field">
-            <span class="field__label">Estrategia</span>
-            <select name="strategy" id="strategy"></select>
-          </label>
-        </details>
+          <details class="more">
+            <summary>Más parámetros</summary>
+            <label class="field">
+              <span class="field__label">Costo de un día de mercado cerrado</span>
+              <input type="number" name="market_cost" min="0" step="5">
+            </label>
+            <label class="field">
+              <span class="field__label">Costo de un día de colegios cerrados</span>
+              <input type="number" name="school_cost" min="0" step="5">
+            </label>
+            <label class="field">
+              <span class="field__label">Días como Mordido <output id="latentOut"></output></span>
+              <input type="range" name="latent_mean" min="0.5" max="14" step="0.5">
+            </label>
+            <label class="field">
+              <span class="field__label">Días como Zombie <output id="infOut"></output></span>
+              <input type="range" name="infectious_mean" min="1" max="21" step="0.5">
+            </label>
+            <label class="field">
+              <span class="field__label">Llegan las vacunas el día <output id="startOut"></output></span>
+              <input type="range" name="vaccine_start_day" min="0" max="40" step="1">
+            </label>
+            <label class="field">
+              <span class="field__label">Zombies detectados <output id="detOut"></output></span>
+              <input type="range" name="detection_prob" min="0" max="1" step="0.05">
+            </label>
+            <label class="field">
+              <span class="field__label">Días hasta detectar <output id="delayOut"></output></span>
+              <input type="range" name="detection_delay" min="0" max="10" step="1">
+            </label>
+            <label class="field">
+              <span class="field__label">Casos iniciales</span>
+              <input type="number" name="initial_cases" min="1" max="200">
+            </label>
+            <label class="field">
+              <span class="field__label">Días simulados</span>
+              <input type="number" name="days" min="10" max="365" step="10">
+            </label>
+            <label class="field">
+              <span class="field__label">Corridas por política</span>
+              <input type="number" name="runs" min="10" max="400" step="10">
+            </label>
+            <label class="field">
+              <span class="field__label">Estrategia</span>
+              <select name="strategy" id="strategy"></select>
+            </label>
+          </details>
 
-        <label class="field field--seed">
-          <span class="field__label">Semilla del jurado</span>
-          <span class="seed-row">
-            <input type="number" name="seed" min="0" max="2147483647" inputmode="numeric">
-            <button type="button" class="btn btn--ghost" id="dice" title="Semilla al azar">Al azar</button>
-          </span>
-        </label>
+          <label class="field field--seed">
+            <span class="field__label">Semilla del jurado</span>
+            <span class="seed-row">
+              <input type="number" name="seed" min="0" max="2147483647" inputmode="numeric">
+              <button type="button" class="btn btn--ghost" id="dice" title="Semilla al azar">Al azar</button>
+            </span>
+          </label>
 
-        <div class="instant" id="instant" hidden></div>
-
-        <button type="submit" class="btn btn--primary" id="run">Recomendar</button>
-        <p class="hint" id="runHint">Corre todas las estrategias con la misma semilla y recomienda la que más salva.</p>
-      </form>
+          <div class="instant" id="instant" hidden></div>
+          <p class="hint" id="runHint">Corre todas las estrategias con la misma semilla y recomienda la que más salva.</p>
+        </form>
+      </div>
     </aside>
 
-    <!-- Results -->
-    <main class="results" id="results" aria-live="polite">
-      <section class="panel verdict" id="verdict">
+    <!-- Right drawer: the verdict -->
+    <aside class="drawer drawer--right ui" id="panel-verdict" aria-label="Recomendación del comité">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Veredicto</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body verdict" id="verdict" aria-live="polite">
         <p class="verdict__error" id="runError" role="alert" hidden></p>
         <p class="verdict__stale" id="staleNote" role="status" hidden></p>
         <div class="verdict__empty" id="empty">
@@ -208,10 +233,6 @@
               <span class="figure__range" id="wasted"></span>
             </div>
           </div>
-          <div class="mayor" id="mayor">
-            <button type="button" class="btn btn--ghost" id="mayorBtn">Explícaselo al alcalde (IA)</button>
-            <div class="mayor__report" id="mayorReport" hidden aria-live="polite"></div>
-          </div>
           <div class="seedstrip">
             <div class="seedstrip__head">
               <span id="stripTitle"></span>
@@ -219,71 +240,45 @@
             </div>
             <div class="seedstrip__ticks" id="strip" role="img"></div>
           </div>
+          <div class="mayor" id="mayor">
+            <button type="button" class="btn btn--ghost" id="mayorBtn">Explícaselo al alcalde (IA)</button>
+            <div class="mayor__report" id="mayorReport" hidden aria-live="polite"></div>
+          </div>
+          <div class="certificate" id="certificate" hidden>
+            <p class="eyebrow">Certificado de reproducibilidad</p>
+            <dl class="cert">
+              <div><dt>Configuración</dt><dd id="certHash"></dd></div>
+              <div><dt>Semilla</dt><dd id="certSeed"></dd></div>
+              <div><dt>Ciudad</dt><dd id="certCity"></dd></div>
+              <div><dt>Motor</dt><dd id="certEngine"></dd></div>
+              <div><dt>Commit</dt><dd id="certCommit"></dd></div>
+              <div><dt>Tiempo</dt><dd id="certTime"></dd></div>
+            </dl>
+            <button type="button" class="btn btn--ghost" id="copyLink">Copiar enlace para repetir</button>
+          </div>
         </div>
-      </section>
+      </div>
+    </aside>
 
-      <!-- Animated map -->
-      <section class="panel mapcard" id="mapcard">
-        <div class="panel__head">
-          <h2>El brote, calle por calle</h2>
-          <div class="segmented" role="group" aria-label="Qué corrida ver en el mapa" id="mapPolicy">
-            <button type="button" class="segmented__btn" data-policy="none" aria-pressed="true">Sin intervenir</button>
-            <button type="button" class="segmented__btn" data-policy="random" aria-pressed="false">Azar</button>
-            <button type="button" class="segmented__btn" data-policy="strategy" aria-pressed="false">Estrategia</button>
-          </div>
-        </div>
-        <div class="map-wrap">
-          <div id="map" class="map" role="img" aria-label="Mapa de Manta con los casos de la corrida típica"></div>
-          <div class="map-hud">
-            <div class="hud__day"><span>Día</span><strong id="hudDay">0</strong></div>
-            <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong><i class="hud__bar"><b id="barZombies"></b></i></div>
-            <div class="hud__stat hud__stat--bitten"><span>Mordidos en total</span><strong id="hudBitten">0</strong><i class="hud__bar"><b id="barBitten"></b></i></div>
-            <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong><i class="hud__bar"><b id="barVax"></b></i></div>
-            <div class="hud__stat hud__stat--city"><span>De la ciudad</span><strong id="hudCity">0 %</strong></div>
-            <div class="hud__closed" id="hudClosed" hidden></div>
-          </div>
-          <aside class="bcard" id="barrioCard" hidden aria-live="polite"></aside>
-          <div class="ticker" aria-live="polite"><span class="ticker__tag">EN VIVO</span><span class="ticker__text" id="ticker">Manta duerme tranquila… por ahora.</span></div>
-        </div>
-        <div class="map-controls">
-          <button type="button" class="btn btn--ghost" id="play" disabled>▶ Reproducir</button>
-          <input type="range" id="daySlider" min="0" max="150" value="0" aria-label="Día de la simulación" disabled>
-          <div class="speed" role="group" aria-label="Velocidad" id="speed">
-            <button type="button" class="speed__btn" data-speed="2" aria-pressed="false" title="Lento">▶</button>
-            <button type="button" class="speed__btn" data-speed="5" aria-pressed="true" title="Normal">▶▶</button>
-            <button type="button" class="speed__btn" data-speed="12" aria-pressed="false" title="Rápido">▶▶▶</button>
-          </div>
-          <div class="segmented segmented--small" role="group" aria-label="Tipo de mapa">
-            <button type="button" class="segmented__btn" data-tiles="dark" aria-pressed="true">Noche</button>
-            <button type="button" class="segmented__btn" data-tiles="sat" aria-pressed="false">Satélite</button>
-          </div>
-        </div>
-        <div class="progress" id="progress" hidden>
-          <div class="progress__bar" id="progressBar" role="img" aria-label="Estado de la ciudad el día actual">
-            <span class="seg seg--sano"></span><span class="seg seg--vax"></span><span class="seg seg--bitten"></span><span class="seg seg--zombie"></span><span class="seg seg--gone"></span>
-          </div>
-          <div class="progress__legend" id="progressLegend"></div>
-          <canvas class="timeline" id="timeline" aria-label="Zombies por día en esta corrida; la línea marca el día actual"></canvas>
-        </div>
-        <p class="hint map-legend">
-          <i class="dot dot--bitten"></i>Mordido <i class="dot dot--zombie"></i>Zombie <i class="dot dot--gone"></i>Exorcizado <i class="dot dot--vax"></i>Vacunado
-          · <span id="mapRun">Corrida típica</span> de la semilla elegida (la mediana de personas salvadas). Toca un barrio para ver su ficha. Cada punto es una persona simulada (≈ 27 en la vida real); cada hogar está en una calle real de su barrio (OpenStreetMap).
-        </p>
-      </section>
+    <!-- Reports: large sheets over the map -->
+    <section class="sheet ui" id="panel-curves" aria-label="Zombies por día">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Zombies por día</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body">
+        <p class="hint">Línea: promedio. Banda: 90 % de las corridas (percentiles 5 a 95). Pulsa Recomendar para llenarlo.</p>
+        <div class="chart-box chart-box--tall"><canvas id="curveChart" aria-label="Zombies por día para cada política"></canvas></div>
+      </div>
+    </section>
 
-      <section class="panel">
-        <div class="panel__head">
-          <h2>Zombies por día</h2>
-          <p class="hint">Línea: promedio. Banda: 90 % de las corridas (percentiles 5 a 95).</p>
-        </div>
-        <div class="chart-box"><canvas id="curveChart" aria-label="Zombies por día para cada política"></canvas></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel__head">
-          <h2>Torneo de estrategias</h2>
-          <p class="hint">Misma semilla para todas. "Gana" = menos contagios que Azar en esa misma corrida.</p>
-        </div>
+    <section class="sheet ui" id="panel-table" aria-label="Torneo de estrategias">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Torneo de estrategias</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body">
+        <p class="hint">Misma semilla para todas. "Gana" = menos contagios que Azar en esa misma corrida.</p>
         <div class="table-wrap">
           <table class="table" id="table">
             <thead>
@@ -296,34 +291,33 @@
                 <th scope="col" class="num">Dosis perdidas</th>
               </tr>
             </thead>
-            <tbody></tbody>
+            <tbody><tr><td colspan="6" class="hint">Pulsa Recomendar para correr el torneo.</td></tr></tbody>
           </table>
         </div>
-      </section>
-
-      <section class="panel" id="plansPanel" hidden>
-        <div class="panel__head">
-          <h2>Plan de cierres</h2>
+        <div id="plansPanel" hidden>
+          <h3 class="mini-title plans__title">Plan de cierres</h3>
           <p class="hint">Misma estrategia de vacunas, mismas semillas (las primeras 40) y mismo presupuesto; solo cambia qué se cierra.</p>
+          <p class="plans__text" id="plansText"></p>
+          <div class="table-wrap">
+            <table class="table" id="plansTable">
+              <thead><tr>
+                <th scope="col">Plan</th><th scope="col" class="num">Contagiados</th><th scope="col" class="num">Salvados vs Nada</th>
+                <th scope="col" class="num">Días de cierre</th><th scope="col" class="num">Gasto</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-        <p class="plans__text" id="plansText"></p>
-        <div class="table-wrap">
-          <table class="table" id="plansTable">
-            <thead><tr>
-              <th scope="col">Plan</th><th scope="col" class="num">Contagiados</th><th scope="col" class="num">Salvados vs Nada</th>
-              <th scope="col" class="num">Días de cierre</th><th scope="col" class="num">Gasto</th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Real data vs fiction -->
-      <section class="panel realfic" id="realfic">
-        <div class="panel__head">
-          <h2>Evidencia real y ficción</h2>
-          <p class="hint">El mismo motor, calibrado con datos de Manta y puesto frente a los zombis del cine.</p>
-        </div>
+    <section class="sheet ui realfic" id="panel-real" aria-label="Evidencia real y ficción">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Evidencia real y ficción</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body">
+        <p class="hint">El mismo motor, calibrado con datos de Manta y puesto frente a los zombis del cine.</p>
         <div class="realfic__grid">
           <div>
             <h3 class="mini-title">COVID-19 en Manta, 2020: muertes de más por semana</h3>
@@ -332,13 +326,16 @@
           </div>
           <div class="scenarios" id="scenarios"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="panel jury" id="jury">
-        <div class="panel__head">
-          <h2>Modo Jurado</h2>
-          <p class="hint">Un atacante automático busca los brotes sorpresa donde nuestra estrategia pierde contra Azar.</p>
-        </div>
+    <section class="sheet ui jury" id="panel-jury" aria-label="Modo Jurado">
+      <div class="drawer__head">
+        <h2 class="drawer__title">Modo Jurado</h2>
+        <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="drawer__body">
+        <p class="hint">Un atacante automático busca los brotes sorpresa donde nuestra estrategia pierde contra Azar.</p>
         <p class="jury__frontier" id="autoText"></p>
         <p class="jury__fixed" id="frontier"></p>
         <div class="jury__shares" id="shares"></div>
@@ -358,34 +355,80 @@
           <button type="button" class="btn btn--ghost" id="runJury">Atacar con las condiciones actuales</button>
           <span class="hint" id="juryHint">Prueba unos 30 brotes distintos; tarda alrededor de un minuto.</span>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <footer class="panel certificate" id="certificate" hidden>
-        <div>
-          <p class="eyebrow">Certificado de reproducibilidad</p>
-          <dl class="cert">
-            <div><dt>Configuración</dt><dd id="certHash"></dd></div>
-            <div><dt>Semilla</dt><dd id="certSeed"></dd></div>
-            <div><dt>Ciudad</dt><dd id="certCity"></dd></div>
-            <div><dt>Motor</dt><dd id="certEngine"></dd></div>
-            <div><dt>Commit</dt><dd id="certCommit"></dd></div>
-            <div><dt>Tiempo</dt><dd id="certTime"></dd></div>
-          </dl>
+    <!-- Bottom: the command dock -->
+    <footer class="dock ui" id="dock">
+      <nav class="dock__nav" aria-label="Paneles">
+        <button type="button" class="dock__btn" data-panel="controls" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+          <span>Condiciones</span>
+        </button>
+        <button type="button" class="dock__btn" data-panel="verdict" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+          <span>Veredicto</span>
+        </button>
+        <button type="button" class="dock__btn" data-panel="curves" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 17c3 0 4-11 7-11s4 8 6 8 2-3 3-3"/></svg>
+          <span>Curvas</span>
+        </button>
+        <button type="button" class="dock__btn" data-panel="table" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/></svg>
+          <span>Torneo</span>
+        </button>
+        <button type="button" class="dock__btn" data-panel="real" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>
+          <span>Evidencia</span>
+        </button>
+        <button type="button" class="dock__btn" data-panel="jury" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+          <span>Jurado</span>
+        </button>
+      </nav>
+
+      <div class="dock__center">
+        <div class="map-hud">
+          <div class="hud__day"><span>Día</span><strong id="hudDay">0</strong></div>
+          <div class="hud__stat hud__stat--zombie"><span>Zombies hoy</span><strong id="hudZombies">0</strong><i class="hud__bar"><b id="barZombies"></b></i></div>
+          <div class="hud__stat hud__stat--bitten"><span>Mordidos</span><strong id="hudBitten">0</strong><i class="hud__bar"><b id="barBitten"></b></i></div>
+          <div class="hud__stat hud__stat--vax"><span>Vacunados</span><strong id="hudVax">0</strong><i class="hud__bar"><b id="barVax"></b></i></div>
+          <div class="hud__stat hud__stat--city"><span>De la ciudad</span><strong id="hudCity">0 %</strong></div>
+          <div class="hud__closed" id="hudClosed" hidden></div>
         </div>
-        <button type="button" class="btn btn--ghost" id="copyLink">Copiar enlace para repetir</button>
-      </footer>
-    </main>
+        <div class="progress" id="progress">
+          <div class="progress__bar" id="progressBar" role="img" aria-label="Estado de la ciudad el día actual">
+            <span class="seg seg--sano"></span><span class="seg seg--vax"></span><span class="seg seg--bitten"></span><span class="seg seg--zombie"></span><span class="seg seg--gone"></span>
+          </div>
+          <div class="progress__legend" id="progressLegend">
+            <span class="pl pl--sano"><i></i>Sanos</span><span class="pl pl--vax"><i></i>Vacunados</span><span class="pl pl--bitten"><i></i>Mordidos</span><span class="pl pl--zombie"><i></i>Zombies</span><span class="pl pl--gone"><i></i>Exorcizados</span>
+          </div>
+        </div>
+        <div class="map-controls">
+          <button type="button" class="icon-btn icon-btn--play" id="play" disabled aria-label="Reproducir">▶</button>
+          <div class="speed" role="group" aria-label="Velocidad" id="speed">
+            <button type="button" class="speed__btn" data-speed="2" aria-pressed="false" title="Lento">1×</button>
+            <button type="button" class="speed__btn" data-speed="5" aria-pressed="true" title="Normal">2×</button>
+            <button type="button" class="speed__btn" data-speed="12" aria-pressed="false" title="Rápido">5×</button>
+          </div>
+          <div class="scrub">
+            <canvas class="timeline" id="timeline" aria-label="Zombies por día en esta corrida; la línea marca el día actual"></canvas>
+            <input type="range" id="daySlider" min="0" max="150" value="0" aria-label="Día de la simulación" disabled>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock__run">
+        <button type="submit" form="form" class="btn btn--primary btn--run" id="run">Recomendar</button>
+        <p class="dock__hint" id="runStatus">Toca un barrio para ver su ficha</p>
+      </div>
+    </footer>
   </div>
-
-  <div class="mobile-run"><button type="submit" form="form" class="btn btn--primary">Recomendar</button></div>
-
-  <footer class="site-footer">
-    <img src="assets/mineral-halloween.svg" alt="" width="28" height="30">
-    <span>Mineral Studio · Comité de Contención de Manta · SpookyThon 2026, ULEAM</span>
-  </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

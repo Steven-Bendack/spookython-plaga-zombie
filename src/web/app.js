@@ -1,5 +1,6 @@
 // Plaga Zombie · Manta — UI. Plain ES module, no build step.
 import * as sound from "./sound.js";
+import { createGlobe, HANDOFF_ZOOM } from "./globe.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -13,7 +14,8 @@ const FIELDS = ["r0", "doses_per_day", "vaccine_efficacy", "seed_location", "vac
   "close_market", "close_schools", "closure_trigger", "budget", "market_cost", "school_cost"];
 const CHECKBOXES = new Set(["close_market", "close_schools"]);
 const MANTA = [-0.9677, -80.7089];
-const ECUADOR = [-1.6, -78.4];
+const CITY = [-0.975, -80.735];   // where the camera lands
+const SHEETS = ["curves", "table", "real", "jury"];
 
 const $ = (sel) => document.querySelector(sel);
 const form = $("#form");
@@ -35,9 +37,14 @@ if (window.Chart) {
 
 // ---------- bootstrapping ----------
 
+let resolveReady;
+const ready = new Promise((resolve) => { resolveReady = resolve; });
+
 async function init() {
-  initIntro();
+  initSettings();
   initMap();
+  initPanels();
+  initIntro();
   const [meta, dmap, jury, real, scenarios] = await Promise.all([
     getJSON(`${API}/meta`),
     getJSON("data/decision_map.json").catch(() => null),
@@ -66,8 +73,7 @@ async function init() {
   $("#copyLink").addEventListener("click", copyLink);
   $("#runJury").addEventListener("click", runJury);
   segmented("#juryView", "view", (v) => { state.juryView = v; renderJury(state.jury); });
-
-  if (fromUrl.seed) runSimulation();
+  resolveReady();
 }
 
 async function getJSON(url, body) {
@@ -93,25 +99,121 @@ function segmented(groupSel, attr, onChange) {
   });
 }
 
-// ---------- intro and sound ----------
+// ---------- intro: the planet, the dive onto Manta, then the city wakes up ----------
+
+const motionOff = () => matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm");
 
 function initIntro() {
   const intro = $("#intro");
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const stopAnim = introAnimation($("#introCanvas"), reduce);
-  const enter = async (withSound) => {
-    if (withSound) {
-      try { await sound.start(); } catch { /* audio blocked: continue in silence */ }
-    }
-    updateSoundButton();
+  const reduce = motionOff();
+  let globe = null;
+  try {
+    globe = createGlobe($("#globe"), { reduce, worldUrl: "data/world-110m.json" });
+  } catch { /* no d3: go straight to the map */ }
+
+  const enter = async () => {
+    $("#enterSound").disabled = true;
+    try { await sound.start(); } catch { /* audio blocked: continue in silence */ }
+    $("#introContent").classList.add("is-gone");
+    $("#introTarget").hidden = false;
+    if (globe) await globe.descend();
+
+    // Hand over: the map is already at the globe's last view, so the fade is seamless.
+    const map = mapState.leaflet;
+    map?.setView(MANTA, HANDOFF_ZOOM, { animate: false });
     intro.classList.add("is-leaving");
-    setTimeout(() => { intro.hidden = true; stopAnim(); }, reduce ? 0 : 700);
-    $("#run").focus({ preventScroll: true });
+    setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce ? 0 : 900);
+    showLoading("Descendiendo sobre Manta", "271 145 habitantes · 10 barrios · calles de OpenStreetMap");
+    await flyToCity(reduce);
+    $("#game").classList.add("is-live");
+    await ready;
+    runSimulation();
   };
-  // Entering always starts the soundtrack; it can only be turned down in Settings.
-  $("#enterSound").addEventListener("click", () => enter(true));
+  $("#enterSound").addEventListener("click", enter);
   $("#enterSound").focus();
-  initSettings();
+}
+
+function flyToCity(reduce) {
+  const map = mapState.leaflet;
+  mapState.flown = true;
+  if (!map) return Promise.resolve();
+  const zoom = map.getSize().x < 600 ? 12 : 13;
+  return new Promise((resolve) => {
+    const done = () => {
+      map.removeLayer(mapState.pin);
+      mapState.tiles.dark.addLayer(mapState.darkLabels);
+      resolve();
+    };
+    if (reduce) { map.setView(CITY, zoom, { animate: false }); return done(); }
+    map.once("moveend", done);
+    map.flyTo(CITY, zoom, { duration: 4.2, easeLinearity: 0.15 });
+  });
+}
+
+function showLoading(title, text) {
+  $("#loading").hidden = false;
+  $("#loading .loading__title").textContent = title;
+  $("#loadingText").textContent = text;
+}
+
+function hideLoading() { $("#loading").hidden = true; }
+
+// ---------- panels over the map ----------
+
+const isNarrow = () => matchMedia("(max-width: 900px)").matches;
+
+function initPanels() {
+  $("#dock").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-panel]");
+    if (btn) togglePanel(btn.dataset.panel);
+  });
+  document.querySelectorAll("[data-close]").forEach((btn) => btn.addEventListener("click", () => {
+    closePanel(btn.closest(".drawer, .sheet").id.replace("panel-", ""));
+  }));
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
+    const open = [...document.querySelectorAll(".drawer.is-open, .sheet.is-open")].at(-1);
+    if (open) closePanel(open.id.replace("panel-", ""));
+  });
+  document.querySelectorAll(".drawer, .sheet").forEach((el) => { el.inert = true; });
+  // Panels and map controls fit between the top bar and the dock, whatever height they take.
+  const game = $("#game");
+  const dock = $("#dock");
+  const top = $(".topbar");
+  new ResizeObserver(() => {
+    game.style.setProperty("--dock-h", `${dock.offsetHeight}px`);
+    game.style.setProperty("--top-h", `${top.offsetHeight}px`);
+  }).observe(dock);
+  new ResizeObserver(() => game.style.setProperty("--top-h", `${top.offsetHeight}px`)).observe(top);
+}
+
+function openPanel(name) {
+  const el = $(`#panel-${name}`);
+  if (!el) return;
+  // Sheets cover the middle of the screen: only one thing open at a time.
+  // Drawers can sit left and right together on a wide screen.
+  const isSheet = SHEETS.includes(name);
+  document.querySelectorAll(".drawer.is-open, .sheet.is-open").forEach((other) => {
+    const key = other.id.replace("panel-", "");
+    if (key !== name && (isSheet || SHEETS.includes(key) || isNarrow())) closePanel(key);
+  });
+  el.classList.add("is-open");
+  el.inert = false;
+  const btn = document.querySelector(`.dock__btn[data-panel="${name}"]`);
+  btn?.setAttribute("aria-pressed", "true");
+  btn?.classList.remove("has-news");
+}
+
+function closePanel(name) {
+  const el = $(`#panel-${name}`);
+  if (!el) return;
+  el.classList.remove("is-open");
+  el.inert = true;
+  document.querySelector(`.dock__btn[data-panel="${name}"]`)?.setAttribute("aria-pressed", "false");
+}
+
+function togglePanel(name) {
+  if ($(`#panel-${name}`)?.classList.contains("is-open")) closePanel(name); else openPanel(name);
 }
 
 function initSettings() {
@@ -148,51 +250,6 @@ function loadPrefs() {
 
 function savePrefs(change) {
   try { localStorage.setItem("plaga-prefs", JSON.stringify({ ...loadPrefs(), ...change })); } catch { /* private mode */ }
-}
-
-function updateSoundButton() {}
-
-// Intro background: houses of a dark city; a few catch the plague and it spreads.
-function introAnimation(canvas, reduce) {
-  const ctx = canvas.getContext("2d");
-  let raf = 0;
-  let people = [];
-  const resize = () => {
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = innerWidth * ratio;
-    canvas.height = innerHeight * ratio;
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const count = Math.round((innerWidth * innerHeight) / 2600);
-    people = Array.from({ length: count }, () => ({
-      x: Math.random() * innerWidth, y: Math.random() * innerHeight, bitten: -1,
-    }));
-    for (let i = 0; i < 3; i += 1) people[Math.floor(Math.random() * count)].bitten = 0;
-  };
-  resize();
-  addEventListener("resize", resize);
-  let t = 0;
-  const frame = () => {
-    t += 1;
-    ctx.clearRect(0, 0, innerWidth, innerHeight);
-    const sick = people.filter((p) => p.bitten >= 0 && t - p.bitten < 260);
-    for (const p of people) {
-      if (p.bitten < 0 && Math.random() < 0.02) {
-        for (const z of sick) {
-          if (Math.abs(z.x - p.x) < 46 && Math.abs(z.y - p.y) < 46) { p.bitten = t; break; }
-        }
-      }
-      const age = p.bitten < 0 ? -1 : t - p.bitten;
-      if (age < 0) ctx.fillStyle = "rgba(239, 230, 214, 0.18)";
-      else if (age < 40) ctx.fillStyle = "#ffc94d";
-      else if (age < 260) ctx.fillStyle = `rgba(255, 59, 59, ${0.9 - 0.4 * Math.sin(t / 9 + p.x)})`;
-      else ctx.fillStyle = "rgba(120, 100, 110, 0.35)";
-      ctx.fillRect(p.x, p.y, 2.4, 2.4);
-    }
-    if (sick.length === 0) resize();
-    if (!reduce) raf = requestAnimationFrame(frame);
-  };
-  frame();
-  return () => { cancelAnimationFrame(raf); removeEventListener("resize", resize); };
 }
 
 // ---------- form ----------
@@ -312,21 +369,25 @@ function labelOf(name) {
 function markStale(text = "Cambiaste las condiciones. Pulsa Recomendar para actualizar la respuesta.") {
   $("#runHint").textContent = text;
   if (!state.last) return;
-  [$("#run"), $(".mobile-run .btn")].forEach((b) => { if (!b.disabled) b.textContent = "Recomendar con el cambio"; });
+  if (!$("#run").disabled) $("#run").textContent = "Recomendar con el cambio";
   $("#verdict").classList.add("is-stale");
   $("#staleNote").hidden = false;
   $("#staleNote").textContent = text;
 }
 
 async function runSimulation() {
-  const buttons = [$("#run"), $(".mobile-run .btn")];
-  const results = $("#results");
+  const buttons = [$("#run")];
   const started = performance.now();
+  const runs = readForm().runs;
   const label = () => `Simulando… ${Math.round((performance.now() - started) / 1000)} s`;
-  buttons.forEach((b) => { b.disabled = true; b.textContent = label(); });
-  const timer = setInterval(() => buttons.forEach((b) => { b.textContent = label(); }), 1000);
-  results.classList.add("is-loading");
-  results.setAttribute("aria-busy", "true");
+  const tick = () => {
+    buttons.forEach((b) => { b.textContent = label(); });
+    $("#loadingText").textContent = `${runs} corridas por estrategia, todas con la misma suerte · ${Math.round((performance.now() - started) / 1000)} s`;
+  };
+  buttons.forEach((b) => { b.disabled = true; });
+  showLoading("Simulando la plaga", "");
+  tick();
+  const timer = setInterval(tick, 1000);
   $("#runError").hidden = true;
   $("#runHint").textContent = "Corriendo todas las estrategias con la misma semilla. Suele tardar menos de un minuto.";
   try {
@@ -337,18 +398,20 @@ async function runSimulation() {
     $("#verdict").classList.remove("is-stale");
     $("#staleNote").hidden = true;
     $("#runHint").textContent = "Corre todas las estrategias con la misma semilla y recomienda la que más salva.";
-    $("#verdict").scrollIntoView({ behavior: "smooth", block: "start" });
+    // On a phone the verdict would cover the city: flag it in the dock instead.
+    if (isNarrow()) $('.dock__btn[data-panel="verdict"]').classList.add("has-news");
+    else openPanel("verdict");
     $("#bestName").focus({ preventScroll: true });
   } catch (err) {
     const msg = `No se pudo simular: ${err.message}. Revisa los valores e inténtalo de nuevo.`;
     $("#runHint").textContent = msg;
     $("#runError").textContent = msg;
     $("#runError").hidden = false;
+    openPanel("verdict");
   } finally {
     clearInterval(timer);
     buttons.forEach((b) => { b.disabled = false; b.textContent = "Recomendar"; });
-    results.classList.remove("is-loading");
-    results.removeAttribute("aria-busy");
+    hideLoading();
   }
 }
 
@@ -522,13 +585,16 @@ const mapState = {
 
 function initMap() {
   if (!window.L) return;
-  const map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false })
-    .setView(ECUADOR, 6);
+  // Starts where the intro globe will hand over, so those tiles are loaded by then.
+  const map = L.map("map", { zoomControl: false, attributionControl: true, scrollWheelZoom: true })
+    .setView(MANTA, HANDOFF_ZOOM);
+  L.control.zoom({ position: "bottomright" }).addTo(map);
   const esri = (path) => `https://server.arcgisonline.com/ArcGIS/rest/services/${path}/MapServer/tile/{z}/{y}/{x}`;
   const attribution = "Mapa &copy; Esri, HERE, Garmin, &copy; colaboradores de OpenStreetMap";
+  // Place names stay off during the descent: scaled-up label tiles look blurry while flying.
+  mapState.darkLabels = L.tileLayer(esri("Canvas/World_Dark_Gray_Reference"), { maxZoom: 16 });
   mapState.tiles.dark = L.layerGroup([
     L.tileLayer(esri("Canvas/World_Dark_Gray_Base"), { maxZoom: 16, attribution }),
-    L.tileLayer(esri("Canvas/World_Dark_Gray_Reference"), { maxZoom: 16 }),
   ]).addTo(map);
   mapState.tiles.sat = L.layerGroup([
     L.tileLayer(esri("World_Imagery"), { maxZoom: 18, attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics" }),
@@ -556,7 +622,7 @@ function initMap() {
   getJSON("data/manta_streets.json").then((d) => { mapState.streets = d.lines; drawStreets(); }).catch(() => {});
 
   segmented("#mapPolicy", "policy", (p) => { mapState.policy = p; prepareRun(); drawPeople(); });
-  segmented("#mapcard .segmented--small", "tiles", (t) => {
+  segmented("#mapTiles", "tiles", (t) => {
     Object.values(mapState.tiles).forEach((l) => map.removeLayer(l));
     mapState.tiles[t].addTo(map);
   });
@@ -575,20 +641,15 @@ function initMap() {
 
 function loadMapRun(data) {
   mapState.data = data;
-  $("#mapRun").textContent = `Corrida ${data.map.run}`;
+  $("#mapRun").textContent = `corrida típica n.º ${data.map.run}`;
   mapState.day = 0;
   prepareRun();
   const map = mapState.leaflet;
   if (!map) return;
   $("#play").disabled = false;
   $("#daySlider").disabled = false;
-  $("#progress").hidden = false;
   if (!mapState.flown) {
-    mapState.flown = true;
-    map.removeLayer(mapState.pin);
-    const zoom = map.getSize().x < 600 ? 12 : 13;
-    map.flyTo([-0.975, -80.735], zoom, { duration: 3.2 });
-    map.once("moveend", play);
+    flyToCity(motionOff()).then(play);
   } else {
     play();
   }
@@ -687,7 +748,8 @@ function play() {
   }
   mapState.playing = true;
   clearTimeout(mapState.idle);
-  $("#play").textContent = "❚❚ Pausa";
+  $("#play").textContent = "❚❚";
+  $("#play").setAttribute("aria-label", "Pausa");
   let last = performance.now();
   const step = (now) => {
     const speed = mapState.speed; // days per second
@@ -704,7 +766,8 @@ function play() {
 function pause() {
   mapState.playing = false;
   cancelAnimationFrame(mapState.raf);
-  $("#play").textContent = "▶ Reproducir";
+  $("#play").textContent = "▶";
+  $("#play").setAttribute("aria-label", "Reproducir");
   idle();
 }
 
@@ -1029,7 +1092,7 @@ function renderScenarios(scenarios) {
     const { r0, latent_mean, infectious_mean, days } = scenarios[btn.dataset.load].config;
     setForm({ r0, latent_mean, infectious_mean, days });
     updateOutputs();
-    $("#verdict").scrollIntoView({ behavior: "smooth" });
+    closePanel("real");
     runSimulation();
   });
 }
@@ -1185,5 +1248,8 @@ function hexA(hex, alpha) {
 }
 
 init().catch((err) => {
-  $("#runHint").textContent = `No se pudo cargar la configuración: ${err.message}. ¿Está corriendo el servidor?`;
+  const msg = `No se pudo cargar la configuración: ${err.message}. ¿Está corriendo el servidor?`;
+  $("#runHint").textContent = msg;
+  $("#ticker").textContent = msg;
+  hideLoading();
 });
