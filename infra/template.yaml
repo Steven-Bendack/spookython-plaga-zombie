@@ -14,6 +14,11 @@ Parameters:
     Type: Number
     Default: 40
     Description: Parallel children of the Distributed Map.
+  DeepSeekApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional key for the mayor's report. Empty = template text, no AI.
 
 Globals:
   Function:
@@ -100,6 +105,7 @@ Resources:
           STATE_MACHINE_ARN: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-montecarlo"
           MAX_FANOUT: !Ref MaxFanout
           MAX_INTERACTIVE_RUNS: "200"
+          DEEPSEEK_API_KEY: !Ref DeepSeekApiKey
       Policies:
         - LambdaInvokePolicy: { FunctionName: !Ref WorkerFunction }
         - S3ReadPolicy: { BucketName: !Ref ResultsBucket }
@@ -117,6 +123,9 @@ Resources:
         Simulate:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/simulate }
+        Report:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/report }
         StartJob:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/jobs }

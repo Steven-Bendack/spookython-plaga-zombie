@@ -3,6 +3,7 @@
 Routes (CloudFront forwards /api/* here):
     GET  /api/meta              defaults, presets and city facts
     POST /api/simulate          tournament; chunks fan out to the worker Lambda
+    POST /api/report            mayor's report written by DeepSeek (template fallback)
     POST /api/jobs              start a big Monte Carlo job (Step Functions Distributed Map)
     GET  /api/jobs/{id}         job status and, when done, its report
 
@@ -19,6 +20,7 @@ import boto3
 
 from engine.api import meta, simulate
 from engine.config import SimConfig
+from engine.mayor import mayor_report
 
 _lambda = boto3.client("lambda")
 _sfn = boto3.client("stepfunctions")
@@ -55,11 +57,13 @@ def handler(event, _context):
             body = _body(event)
             body["runs"] = min(int(body.get("runs", 100)), MAX_INTERACTIVE_RUNS)
             return _ok(simulate(body, lambda_runner))
+        if method == "POST" and path.endswith("/api/report"):
+            return _ok(mayor_report(_body(event)))
         if method == "POST" and path.endswith("/api/jobs"):
             return _ok(_start_job(_body(event)), status=202)
         if method == "GET" and "/api/jobs/" in path:
             return _ok(_job_status(path.rsplit("/", 1)[-1]))
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, KeyError) as exc:
         return _error(400, f"Parámetros inválidos: {exc}")
     return _error(404, "Ruta no encontrada.")
 

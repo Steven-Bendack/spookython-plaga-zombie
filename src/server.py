@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from engine.api import meta, simulate  # noqa: E402
 from engine.config import SimConfig  # noqa: E402
 from engine.jury import red_team  # noqa: E402
+from engine.mayor import mayor_report  # noqa: E402
 from engine.montecarlo import process_pool_runner  # noqa: E402
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -43,12 +44,14 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if self.path.startswith("/api/simulate"):
                 return self._json(simulate(body, process_pool_runner))
+            if self.path.startswith("/api/report"):
+                return self._json(mayor_report(body))
             if self.path.startswith("/api/jury"):
                 cfg = SimConfig.from_dict(body)
                 points = int(min(max(body.get("points", 24), 8), 60))
                 return self._json(red_team(cfg, points=points, runs=10, refine=6,
                                            runner=process_pool_runner))
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, KeyError) as exc:
             return self._json({"error": f"Parámetros inválidos: {exc}"}, HTTPStatus.BAD_REQUEST)
         return self._json({"error": "Ruta no encontrada."}, HTTPStatus.NOT_FOUND)
 
