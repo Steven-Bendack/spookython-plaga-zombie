@@ -3,7 +3,8 @@
 # deployments when the commit author is not a member of the Vercel team).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${TMPDIR:-/tmp}/vercel-plaga"
+# Folder name = Vercel project name.
+OUT="${TMPDIR:-/tmp}/plaga-zombie-manta"
 rm -rf "$OUT" && mkdir -p "$OUT/src"
 cp "$ROOT/app.py" "$ROOT/requirements.txt" "$ROOT/vercel.json" "$OUT/"
 cp -r "$ROOT/src/engine" "$OUT/src/"
