@@ -29,7 +29,7 @@ def app(environ, start_response):
         if method == "POST" and path.endswith("/api/jury"):
             return _json(start_response, {"error": "El ataque en vivo corre en la versión de AWS o en local; "
                                                    "aquí se muestra el último ataque guardado"}, "503 Service Unavailable")
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, OverflowError) as exc:
         return _json(start_response, {"error": f"Parámetros inválidos: {exc}"}, "400 Bad Request")
     return _json(start_response, {"error": "Ruta no encontrada."}, "404 Not Found")
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass, fields, replace
 
 ENGINE_VERSION = "0.1.0"
@@ -45,6 +46,8 @@ class SimConfig:
     def validated(self) -> "SimConfig":
         """Clamp to safe limits so a public API cannot trigger huge runs."""
         c = self
+        c = replace(c, seed=_clamp_int(c.seed, 0, 2**31 - 1))
+        c = replace(c, city_seed=_clamp_int(c.city_seed, 0, 2**31 - 1))
         c = replace(c, runs=_clamp_int(c.runs, 1, 400))
         c = replace(c, days=_clamp_int(c.days, 10, 365))
         c = replace(c, population=_clamp_int(c.population, 1_000, 40_000))
@@ -77,6 +80,8 @@ class SimConfig:
                 value = data[name]
                 if isinstance(default, bool) and isinstance(value, str):
                     value = value.strip().lower() in ("1", "true", "on", "yes", "si", "sí")
+                if isinstance(default, (int, float)) and not isinstance(default, bool):
+                    value = _finite(float(value))
                 kwargs[name] = type(default)(value)
         return cls(**kwargs).validated()
 
@@ -91,9 +96,15 @@ class SimConfig:
         return MANTA_POPULATION / self.population
 
 
+def _finite(value: float) -> float:
+    if not math.isfinite(value):
+        raise ValueError(f"número no válido: {value}")
+    return value
+
+
 def _clamp(value: float, low: float, high: float) -> float:
-    return float(min(max(value, low), high))
+    return float(min(max(_finite(float(value)), low), high))
 
 
 def _clamp_int(value: int, low: int, high: int) -> int:
-    return int(min(max(int(value), low), high))
+    return int(min(max(int(_finite(float(value))), low), high))

@@ -59,7 +59,7 @@ def handler(event, _context):
             return _ok(_start_job(_body(event)), status=202)
         if method == "GET" and "/api/jobs/" in path:
             return _ok(_job_status(path.rsplit("/", 1)[-1]))
-    except ValueError as exc:
+    except (ValueError, TypeError) as exc:
         return _error(400, f"Parámetros inválidos: {exc}")
     return _error(404, "Ruta no encontrada.")
 
