@@ -19,7 +19,8 @@
 7. **Mapa animado de Manta.** Vuelo de Ecuador a Manta y, día por día, cada persona mordida de la **corrida típica** (la mediana de personas salvadas) se enciende sobre el mapa real, con contadores y titulares de lo que pasa en la corrida ("la plaga llega a Tarqui", "ya va el 25 % de la ciudad"…). Se compara sin intervenir, azar y la estrategia.
 8. **Intro con música propia.** La banda sonora (zumbido grave, latido y viento) se genera en vivo en el navegador con Web Audio: no usa archivos ni música con derechos. El latido se acelera cuando la ciudad se llena de zombis.
 9. **Cierres con presupuesto (nivel Pro).** Además de vacunar, el comité puede cerrar el mercado o los colegios mientras vea suficientes casos, pagando cada día de cierre del mismo presupuesto que las dosis. La interfaz compara los cuatro planes (solo vacunas, mercado, colegios, ambos) con las mismas semillas y recomienda el mejor: cerrar colegios rinde mucho; cerrar el mercado, casi nada.
-10. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
+10. **Informe para el alcalde con IA.** El botón «Explícaselo al alcalde» pide a DeepSeek un informe de tres párrafos en lenguaje simple. La IA solo recibe números ya validados por el servidor y el nombre de la estrategia, nunca texto libre, así que no se la puede manipular desde la petición. Si no hay llave o la IA falla, el servidor arma el mismo informe con una plantilla. La llave va en la variable de entorno `DEEPSEEK_API_KEY` (en AWS, parámetro `DeepSeekApiKey`) y nunca en el código.
+11. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
 
 ## El modelo en un minuto
 
@@ -91,7 +92,7 @@ python scripts/precompute.py          # map, jury, real, fiction
 python -m pytest
 ```
 
-49 pruebas, entre ellas:
+57 pruebas, entre ellas:
 
 | Prueba | Qué garantiza |
 |---|---|
