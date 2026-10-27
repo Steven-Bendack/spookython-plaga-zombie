@@ -63,6 +63,34 @@
     <div id="map" class="map" role="img" aria-label="Mapa de Manta con los casos de la corrida típica"></div>
     <div class="vignette" aria-hidden="true"></div>
 
+    <!-- The duel: player's plan on the left, the committee's on the right -->
+    <div class="split" id="split" hidden>
+      <div class="split__line" id="splitLine" role="slider" tabindex="0" aria-label="Divisor entre tu plan y el comité" aria-valuemin="10" aria-valuemax="90" aria-valuenow="50">
+        <span class="split__tag split__tag--you">◀ TÚ</span>
+        <span class="split__grip" aria-hidden="true">⟷</span>
+        <span class="split__tag split__tag--them">COMITÉ ▶</span>
+      </div>
+      <div class="split__bar ui">
+        <div class="split__side split__side--you">
+          <span class="split__who">Tú</span>
+          <span class="split__plan" id="splitYouPlan"></span>
+          <span class="split__stats"><b class="z" id="splitYouZ">0</b> zombis · <b id="splitYouB">0</b> mordidos</span>
+        </div>
+        <div class="split__mid">
+          <span class="split__day" id="splitDay">Día 0</span>
+          <span class="split__actions">
+            <button type="button" class="split__btn" id="splitScore">Marcador</button>
+            <button type="button" class="split__btn" id="splitExit">✕ Salir</button>
+          </span>
+        </div>
+        <div class="split__side split__side--them">
+          <span class="split__who">Comité</span>
+          <span class="split__plan" id="splitThemPlan"></span>
+          <span class="split__stats"><b class="z" id="splitThemZ">0</b> zombis · <b id="splitThemB">0</b> mordidos</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Top: brand, live news, map view -->
     <header class="topbar ui">
       <div class="brand">

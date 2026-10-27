@@ -859,3 +859,59 @@ body { overflow: hidden; background: #000; }
   .challenge__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chip--group { padding: 8px 9px; font-size: 13px; }
 }
+
+/* The duel: one map split in two */
+.split { position: absolute; inset: 0; z-index: 700; pointer-events: none; }
+.split__line {
+  position: absolute; top: 0; bottom: 0; width: 26px; margin-left: -13px; pointer-events: auto; cursor: ew-resize;
+  display: grid; place-items: center; touch-action: none;
+}
+.split__line::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px;
+  background: linear-gradient(180deg, var(--pumpkin), #c9a0ff); box-shadow: 0 0 14px rgba(255, 106, 31, .6);
+}
+.split__grip {
+  position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  font: 700 16px var(--body); color: #160d08; background: linear-gradient(180deg, #ff8a45, var(--pumpkin));
+  border: 2px solid #1a0f2e; box-shadow: 0 4px 14px rgba(0, 0, 0, .6);
+}
+.split__line:focus-visible .split__grip { outline: 3px solid var(--focus); outline-offset: 2px; }
+.split__tag {
+  position: absolute; top: calc(var(--top-h) + var(--gap) * 2 + 92px); white-space: nowrap;
+  font: 700 13px "Pixelify Sans", var(--display); letter-spacing: .06em; padding: 4px 8px;
+  border: 1px solid; background: rgba(6, 15, 23, .88);
+}
+.split__tag--you { right: 22px; color: var(--pumpkin); border-color: var(--pumpkin); }
+.split__tag--them { left: 22px; color: var(--ecto); border-color: var(--ecto); }
+.split__bar {
+  position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--top-h) + var(--gap) * 2);
+  width: min(760px, calc(100vw - var(--gap) * 2)); display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px;
+  align-items: center; padding: 8px 12px; pointer-events: auto; border-radius: 3px;
+  background: linear-gradient(180deg, rgba(16, 34, 49, .9), rgba(6, 15, 23, .92));
+  border: 1px solid rgba(70, 110, 140, .45); box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.split__side { display: grid; gap: 1px; min-width: 0; }
+.split__side--them { text-align: right; }
+.split__who { font: 700 14px "Pixelify Sans", var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.split__side--you .split__who { color: var(--pumpkin); }
+.split__side--them .split__who { color: var(--ecto); }
+.split__plan { font: 600 12px var(--display); letter-spacing: .04em; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.split__stats { font: 600 15px var(--display); font-variant-numeric: tabular-nums; }
+.split__stats b { font-size: 20px; }
+.split__stats b.z { color: var(--blood); }
+.split__mid { display: grid; justify-items: center; gap: 4px; }
+.split__day { font: 700 20px var(--display); color: var(--pumpkin-2); font-variant-numeric: tabular-nums; }
+.split__actions { display: flex; gap: 4px; }
+.split__btn {
+  font: 700 11px var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); cursor: pointer;
+  padding: 5px 8px; background: linear-gradient(180deg, #13283a, var(--night-2)); border: 1px solid var(--line-hi); border-radius: 2px;
+}
+.split__btn:hover { border-color: var(--pumpkin); color: var(--pumpkin-2); }
+@media (max-width: 900px) {
+  .split__bar { grid-template-columns: 1fr 1fr; padding: 6px 8px; }
+  .split__mid { grid-column: 1 / -1; grid-row: 2; grid-template-columns: auto auto; align-items: center; gap: 10px; }
+  .split__stats { font-size: 13px; }
+  .split__stats b { font-size: 16px; }
+  .split__tag { top: auto; bottom: calc(var(--dock-h) + var(--gap) * 2 + 8px); font-size: 11px; }
+}
