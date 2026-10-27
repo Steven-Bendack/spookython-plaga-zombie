@@ -1,6 +1,7 @@
 // Plaga Zombie · Manta — UI. Plain ES module, no build step.
 import * as sound from "./sound.js";
 import { createGlobe, HANDOFF_ZOOM } from "./globe.js";
+import { ghostSVG } from "./ghost.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -99,7 +100,7 @@ function segmented(groupSel, attr, onChange) {
   });
 }
 
-// ---------- intro: the planet, the dive onto Manta, then the city wakes up ----------
+// ---------- intro: the planet, the dive onto Manta, then the city waits for Recomendar ----------
 
 const motionOff = () => matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.classList.contains("calm");
 
@@ -107,6 +108,7 @@ function initIntro() {
   const intro = $("#intro");
   const reduce = motionOff();
   let globe = null;
+  $("#ghost").innerHTML = ghostSVG();
   try {
     globe = createGlobe($("#globe"), { reduce, worldUrl: "data/world-110m.json" });
   } catch { /* no d3: go straight to the map */ }
@@ -119,15 +121,18 @@ function initIntro() {
     if (globe) await globe.descend();
 
     // Hand over: the map is already at the globe's last view, so the fade is seamless.
-    const map = mapState.leaflet;
-    map?.setView(MANTA, HANDOFF_ZOOM, { animate: false });
+    mapState.leaflet?.setView(MANTA, HANDOFF_ZOOM, { animate: false });
     intro.classList.add("is-leaving");
     setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce ? 0 : 900);
     showLoading("Descendiendo sobre Manta", "271 145 habitantes · 10 barrios · calles de OpenStreetMap");
     await flyToCity(reduce);
+    hideLoading();
     $("#game").classList.add("is-live");
+    $("#ticker").textContent = "Manta duerme tranquila… por ahora. Ajusta las condiciones y pulsa RECOMENDAR para simular el brote.";
+    $("#runStatus").textContent = "Pulsa para simular el brote";
+    // A shared "repeat" link (with its seed) replays right away; otherwise the committee decides when.
     await ready;
-    runSimulation();
+    if (new URLSearchParams(location.search).has("seed")) runSimulation();
   };
   $("#enterSound").addEventListener("click", enter);
   $("#enterSound").focus();
