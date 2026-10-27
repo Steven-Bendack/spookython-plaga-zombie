@@ -12,7 +12,10 @@
 2. **Modo Jurado (red team automático).** Un atacante prueba decenas de brotes sorpresa (R0, dosis, eficacia, lugar de inicio, retraso de detección) buscando dónde perdemos contra Azar. Resultado: una regla fija como «Anillo + conectados» **pierde cuando R0 ≥ 2,3**; el **torneo automático**, que elige con semillas de entrenamiento y se juzga con semillas nuevas, **no pierde en ninguno** (los empates son brotes donde ninguna vacuna cambia nada). Detalle en [docs/decisiones.md](docs/decisiones.md).
 3. **Mapa de decisión precalculado.** 72 condiciones con su mejor estrategia: en el Brote Sorpresa la respuesta aparece al instante y luego se confirma con la semilla del jurado.
 4. **Realismo de información.** El comité solo ve los Zombies **detectados** (60 %, con 2 días de retraso). No ve a los Mordidos. Las dosis que se pierden en ellos se muestran, no se esconden.
-5. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
+5. **Calibrado con datos reales de Manta.** El exceso de muertes de 2020 (Registro Civil) muestra que la primera ola crecía 8,4 % por día; el modelo reproduce ese crecimiento con **R0 = 2,35** y la forma de la ola coincide (5 semanas sobre la mitad del pico en la realidad, 4 en el modelo).
+6. **Evidencia real frente a ficción.** El mismo motor corre COVID-19 Manta 2020, influenza 2009, el zombi clásico del cine ([Alemi et al. 2015](https://arxiv.org/abs/1503.01104)), The Walking Dead y Guerra Mundial Z. Cada uno pide una estrategia distinta.
+7. **Mapa animado de Manta.** Vuelo de Ecuador a Manta y, día por día, cada persona mordida se enciende sobre el mapa real, con contadores y titulares de lo que pasa en la corrida ("la plaga llega a Tarqui", "ya va el 25 % de la ciudad"…). Se compara sin intervenir, azar y la estrategia.
+8. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
 
 ## El modelo en un minuto
 
@@ -56,10 +59,11 @@ pip install numpy pytest boto3
 python src/server.py              # http://localhost:8000
 ```
 
-Opcional, para regenerar el mapa de decisión y el Modo Jurado (≈ 10 minutos en 12 núcleos):
+Opcional, para regenerar los datos reales, el mapa de decisión, el Modo Jurado, la calibración y los escenarios (≈ 12 minutos en 12 núcleos):
 
 ```bash
-python scripts/precompute.py
+python scripts/build_covid_manta.py   # exceso de muertes de Manta (ecuacovid, MIT)
+python scripts/precompute.py          # map, jury, real, fiction
 ```
 
 ## Cómo probarlo
@@ -68,7 +72,7 @@ python scripts/precompute.py
 python -m pytest
 ```
 
-31 pruebas, entre ellas:
+36 pruebas, entre ellas:
 
 | Prueba | Qué garantiza |
 |---|---|
@@ -80,6 +84,8 @@ python -m pytest
 | R0 = 0 ⇒ nadie más se contagia; vacunar a todos ⇒ no hay brote | Sanidad del modelo |
 | R0 calibrado = R0 simulado día a día (±10 %) | Calibración correcta |
 | Modo Jurado reproducible y rutas de la API | Robustez del producto |
+| La tasa de crecimiento se recupera exacta en una curva conocida; los datos de Manta muestran la ola de 2020 | Calibración con datos reales |
+| Los puntos del mapa caen dentro de Manta y las vacunas aparecen desde el día de llegada | Mapa fiel a la simulación |
 
 ## Cómo desplegarlo en AWS
 
@@ -121,11 +127,14 @@ src/engine/       motor en Python puro (no conoce AWS)
   montecarlo.py     corridas pareadas, estadísticas y torneo
   jury.py           Modo Jurado (red team)
   decision_map.py   mapa de decisión
-  api.py            casos de uso (simular, metadatos, certificado)
+  realdata.py       calibración con el exceso de muertes de Manta 2020
+  scenarios.py      escenarios reales y de ficción con su fuente
+  api.py            casos de uso (simular, metadatos, mapa, certificado)
 src/handlers/     adaptadores de AWS Lambda (api, worker, jobs)
 src/server.py     servidor local
 src/web/          interfaz (HTML + JS + Chart.js) y datos precalculados
-api/              adaptador de Vercel (vista previa)
+app.py            adaptador de Vercel (vista previa, WSGI)
+data/             datos reales procesados (Manta 2020)
 infra/            AWS SAM: template, Step Functions y capa de numpy
 tests/            pytest
 docs/             supuestos, decisiones, costos y arquitectura
@@ -142,4 +151,4 @@ docs/             supuestos, decisiones, costos y arquitectura
 
 ## Créditos
 
-Equipo Comité de Contención · SpookyThon 2026 · ULEAM.
+Equipo Comité de Contención · Mineral Studio · SpookyThon 2026 · ULEAM. Datos de defunciones: Registro Civil del Ecuador vía [ecuacovid](https://github.com/andrab/ecuacovid) (MIT). Mapas: Esri, HERE, Garmin y colaboradores de OpenStreetMap.

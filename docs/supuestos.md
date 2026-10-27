@@ -92,3 +92,31 @@ Evaluamos y **descartamos** Collective Influence ([Morone y Makse 2015, Nature](
 | Comparación | **pareada**: la corrida *k* de cada política usa exactamente los mismos números aleatorios (quién se cruza con quién, duraciones, detección, si la dosis funciona) | Diseño de ensayo pareado: solo cambia la decisión, no la suerte |
 | Cómo se elige la mejor | **mediana** de personas salvadas frente a Azar, corrida por corrida; el promedio desempata | El promedio puede ganarlo una sola corrida de suerte (lo encontramos en el mapa de decisión: una estrategia con mejor promedio ganaba solo en el 5 % de las semillas) |
 | Empate en el Modo Jurado | diferencia promedio menor al 0,2 % de la población | Por debajo de eso, la vacunación no cambia el resultado |
+
+## 6. Calibración con datos reales: COVID-19 en Manta, 2020
+
+| Dato | Valor | Fuente o justificación |
+|---|---|---|
+| Muertes semanales en Manta 2017-2020 | serie semanal por cantón | Registro Civil del Ecuador, normalizado por [ecuacovid](https://github.com/andrab/ecuacovid) (licencia MIT). Copia procesada en `data/covid_manta_2020.csv` (`scripts/build_covid_manta.py`) |
+| Exceso de muertes | muertes de 2020 menos el promedio 2017-2019 de la misma semana | En 2020 Ecuador hizo muy pocas pruebas: el exceso de muertes muestra la forma real de la ola mejor que los casos confirmados (que en Manta tienen saltos y correcciones negativas) |
+| Primera ola | semanas 14 a 22; pico en la semana 17 (169 muertes frente a 30 esperadas); ≈ 957 muertes de más | Cálculo propio sobre la serie anterior |
+| Crecimiento observado | 8,4 % por día (se duplica cada 8,3 días): pendiente de log(exceso) en las semanas entre el 20 % y el 80 % del pico (14 a 16) | Las muertes van unas semanas detrás de los contagios, pero crecen al mismo ritmo exponencial |
+| **R0 calibrado** | **2,35** | Simulamos "sin intervenir" en nuestra Manta para R0 de 1,5 a 3,2 (30 corridas cada uno), medimos el crecimiento diario de los contagios con la misma regla 20-80 % e interpolamos el R0 que da 8,4 %/día (`src/engine/realdata.py`) |
+| Validación de forma | la ola real estuvo 5 semanas sobre la mitad del pico; la simulada, 4 | Ecuador entró en cuarentena el 16-17 de marzo de 2020: este R0 reproduce la ola **como ocurrió**, con las medidas de la época |
+
+## 7. Escenarios de ficción (contraste pedido por el jurado)
+
+| Escenario | R0 | Mordido (días) | Zombi (días) | Fuente o justificación |
+|---|---|---|---|---|
+| Zombi clásico (cine) | 1,25 | 0,5 | 21 | [Alemi et al. 2015, Physical Review E](https://arxiv.org/abs/1503.01104) ajustaron *Night of the Living Dead* y *Shaun of the Dead*: α = 0,8 (los humanos destruyen zombis a 0,8 veces la tasa a la que los zombis muerden). Cada zombi muerde en promedio 1/α = 1,25 personas antes de ser destruido. Conversión con vida media de 30 minutos. Los zombis no se curan: "Exorcizado" = destruido; 21 días es el tope del modelo (supuesto) |
+| The Walking Dead | 1,25 | 1,5 | 21 | Caminantes lentos como el zombi clásico (mismo α de Alemi et al.). En la serie el mordido tiene fiebre, muere en uno o dos días y se levanta: latencia 1,5 días (**supuesto de ficción**) |
+| Guerra Mundial Z | 6,0 | 0,5 | 21 | En la película (2013) la conversión tarda 12 segundos y los zombis corren en hordas. No hay estimación publicada: R0 = 6 es un **supuesto de ficción**. El modelo es diario y no baja de 1 día de latencia, así que aquí la plaga es más lenta que en la película |
+| Influenza H1N1 2009 | 1,46 | 1,5 | 4 | R0 mediano de la pandemia de 2009 (Biggerstaff et al. 2014); incubación de influenza A ≈ 1,4 días (Lessler et al. 2009); 4 días contagioso es un supuesto |
+
+## 8. El mapa
+
+| Dato | Valor | Justificación |
+|---|---|---|
+| Ubicación de cada persona | su casa, al azar alrededor del centro de su barrio (≈ 600-700 m, solo hacia tierra adentro) | **Supuesto visual:** el modelo no usa coordenadas para contagiar, solo la red de contactos. El mapa repite la corrida 1 de la semilla elegida |
+| Estado en el mapa | Mordido durante la latencia media, Zombie durante los días contagiosos medios, luego Exorcizado | Aproximación visual con las duraciones promedio (las de cada persona varían) |
+| Mapa base | Esri (gris oscuro e imágenes satelitales) | Gratis con atribución y sin llave de API; Google Maps y CARTO exigen llave |
