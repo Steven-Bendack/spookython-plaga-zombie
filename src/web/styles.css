@@ -915,3 +915,8 @@ body { overflow: hidden; background: #000; }
   .split__stats b { font-size: 16px; }
   .split__tag { top: auto; bottom: calc(var(--dock-h) + var(--gap) * 2 + 8px); font-size: 11px; }
 }
+
+/* Automatic camera toggle */
+.icon-btn--cam svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.icon-btn--cam { color: var(--ink-soft); }
+.icon-btn--cam[aria-pressed="true"] { color: #160d08; background: linear-gradient(180deg, #8ee8ff, var(--vax)); border-color: #1d8fb0; }
