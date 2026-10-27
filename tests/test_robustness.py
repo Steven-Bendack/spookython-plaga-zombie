@@ -52,3 +52,9 @@ def test_vercel_adapter_turns_bad_numbers_into_a_400():
     status = []
     app(env, lambda s, h: status.append(s))
     assert status[0].startswith("400")
+
+
+def test_unknown_strategy_is_a_bad_request_not_a_crash():
+    with pytest.raises(ValueError):
+        SimConfig.from_dict({"strategy": "hack"})
+    assert SimConfig.from_dict({"strategy": "ring"}).strategy == "ring"

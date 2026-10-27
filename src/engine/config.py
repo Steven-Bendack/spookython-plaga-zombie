@@ -64,6 +64,9 @@ class SimConfig:
         c = replace(c, budget=_clamp(c.budget, 0.0, 1e7))
         c = replace(c, market_cost=_clamp(c.market_cost, 0.0, 1e5))
         c = replace(c, school_cost=_clamp(c.school_cost, 0.0, 1e5))
+        from .strategies import CANDIDATES  # local import: strategies depends on config
+        if c.strategy != "auto" and c.strategy not in CANDIDATES:
+            raise ValueError(f"estrategia desconocida: {c.strategy}")
         return c
 
     def to_dict(self) -> dict:
