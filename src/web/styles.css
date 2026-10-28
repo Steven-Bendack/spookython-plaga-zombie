@@ -1021,3 +1021,8 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 }
 @keyframes walk { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-3px) rotate(6deg); } }
 .vehicle--walker svg { fill: #7dff6a; animation: walk .45s ease-in-out infinite; }
+
+/* One-line decision under the strategy name: what to do, people saved, wins against Azar */
+.verdict__decision { margin: 2px 0 12px; font-size: 18px; line-height: 1.35; color: var(--ink); }
+.verdict__decision strong { color: var(--pumpkin-2); }
+.verdict__decision + .verdict__text { font-size: .92em; color: var(--ink-soft); }

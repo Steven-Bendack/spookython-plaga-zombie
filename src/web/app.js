@@ -434,6 +434,10 @@ function renderResult(data, seconds) {
   $("#empty").hidden = true;
   $("#verdictBody").hidden = false;
   $("#bestName").textContent = best.label;
+  // The decision in one line for the mayor: what to do, how many it saves, how often it beats Azar.
+  const wins = Math.round(data.win_rate_vs_random * data.config.runs);
+  $("#recDecision").innerHTML = `${best.description}. <strong>Salva ≈ ${fmt(data.saved_vs_none.mean * scale)} mantenses</strong> `
+    + `y le gana al azar en <strong>${wins} de ${data.config.runs}</strong> semillas.`;
   $("#recText").textContent = data.recommendation_text;
   // Vaccines alone fall short: the committee's closure advice goes right into the verdict.
   const cp = data.closure_plans;
