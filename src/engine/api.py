@@ -14,7 +14,7 @@ from .config import ENGINE_VERSION, SimConfig
 from dataclasses import replace
 
 from .montecarlo import Runner, paired, policy_summary, rank_candidates, run_many, run_policies, serial_runner, tournament
-from .population import BARRIO_NAMES, BARRIOS, build_city
+from .population import BARRIO_NAMES, BARRIOS, MARKET, SCHOOL, build_city
 from .seir import simulate_policy
 from .strategies import (BASELINES, CANDIDATES, DESCRIPTIONS, LABELS, PLAYER_GROUPS, PLAYER_MAX_GROUPS,
                          player_label, player_policy)
@@ -229,11 +229,43 @@ def _replay(city, cfg: SimConfig, beta: float, policy: str, run: int, label: str
 
     res = simulate_policy(city, cfg, beta, policy, run_ids=[run])
     return {"label": label, "bitten": points(res.bitten_day),
+            "source": likely_sources(city, res),
             "vaccinated": points(res.vaccinated_day),
             # S, E, I, R, V of this run, day by day (the progress bar)
             "counts": res.counts[0].tolist(),
             # [market closed, schools closed] each day of this run
             "closed": res.closed_first.astype(int).tolist()}
+
+
+def likely_sources(city, res) -> list:
+    """For each bitten person (same order as "bitten"), the position in that list of the most
+    likely source: among their real contacts who were Zombies that day (closed places excluded),
+    the one with the strongest tie. -1 for the first cases. A drawing aid computed after the run;
+    the simulation does not record who bit whom, and nothing here changes the results.
+    """
+    order = np.flatnonzero(res.bitten_day >= 0)
+    position = np.full(city.n, -1, dtype=np.int64)
+    position[order] = np.arange(order.size)
+    zd, xd = res.zombie_day, res.exorcised_day
+    out = []
+    for i in order:
+        d = int(res.bitten_day[i])
+        if d == 0:
+            out.append(-1)
+            continue
+        lo, hi = city.indptr[i], city.indptr[i + 1]
+        nb = city.indices[lo:hi]
+        # A Zombie at the start of day d: turned on or before d - 1, not yet exorcised before d.
+        ok = (zd[nb] >= 0) & (zd[nb] <= d - 1) & ((xd[nb] < 0) | (xd[nb] >= d))
+        market_closed, schools_closed = res.closed_first[min(d, len(res.closed_first) - 1)]
+        layer = city.layer[lo:hi]
+        ok &= ~((layer == MARKET) & bool(market_closed)) & ~((layer == SCHOOL) & bool(schools_closed))
+        if not ok.any():
+            out.append(-1)
+            continue
+        w = np.where(ok, city.weight[lo:hi], -1.0)
+        out.append(int(position[nb[int(np.argmax(w))]]))
+    return out
 
 
 def _policy_out(name: str, summary: dict) -> dict:

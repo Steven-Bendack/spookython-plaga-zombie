@@ -76,3 +76,29 @@ def test_every_agent_stands_on_a_real_street_home_of_its_barrio():
         mine = city.coords[city.barrio == b]
         nearest = np.min(np.abs(mine[:, None, :] - points[None, :, :]).max(axis=2), axis=1)
         assert nearest.max() < 0.0003, f"barrio {b}: someone is {nearest.max() * 111_000:.0f} m from any home"
+
+
+def test_contagion_lines_point_to_a_real_contact_who_was_a_zombie():
+    import numpy as np
+    from engine.api import likely_sources
+    from engine.calibrate import calibrated_beta
+    from engine.config import SimConfig
+    from engine.population import build_city
+    from engine.seir import simulate_policy
+    cfg = SimConfig.from_dict({"population": 3000, "runs": 1, "days": 120, "seed": 7})
+    city = build_city(cfg.population, cfg.city_seed)
+    beta = calibrated_beta(cfg.population, cfg.city_seed, cfg.r0, cfg.infectious_mean)
+    res = simulate_policy(city, cfg, beta, "none", run_ids=[0])
+    order = np.flatnonzero(res.bitten_day >= 0)
+    src = likely_sources(city, res)
+    assert len(src) == order.size
+    for pos, s in enumerate(src):
+        i = order[pos]
+        if res.bitten_day[i] == 0:
+            assert s == -1  # the first cases came from outside
+            continue
+        assert s >= 0, "every later case has a Zombie contact in the model"
+        j = order[s]
+        d = res.bitten_day[i]
+        assert j in city.indices[city.indptr[i]:city.indptr[i + 1]]
+        assert 0 <= res.zombie_day[j] <= d - 1 and (res.exorcised_day[j] < 0 or res.exorcised_day[j] >= d)

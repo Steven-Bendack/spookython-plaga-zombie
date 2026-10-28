@@ -42,6 +42,10 @@ class PolicyResult:
     spent: np.ndarray            # (runs,) budget units used (doses + closure days)
     closed_days: np.ndarray      # (runs, 2) days the market / the schools were closed
     closed_first: np.ndarray     # (days+1, 2) market / schools closed that day, first run (for the map)
+    # First run only, for the map's contagion lines: day each agent became a Zombie and day it was
+    # exorcised (-1 = never). Recorded from the same loop; they change nothing in the simulation.
+    zombie_day: np.ndarray | None = None
+    exorcised_day: np.ndarray | None = None
 
 
 def run_stream(seed: int, run: int, purpose: int) -> np.random.Generator:
@@ -94,6 +98,8 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
 
     bitten_day = np.full(n, -1, dtype=np.int16)    # first row of run_ids only (for the map)
     vaccinated_day = np.full(n, -1, dtype=np.int16)
+    zombie_day = np.full(n, -1, dtype=np.int16)
+    exorcised_day = np.full(n, -1, dtype=np.int16)
 
     for row, k in enumerate(run_ids):
         seeds = pick_initial_cases(city, cfg, run_stream(cfg.seed, int(k), _SEEDING))
@@ -102,6 +108,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         zombie_since[row, seeds] = 0
         if row == 0:
             bitten_day[seeds] = 0
+            zombie_day[seeds] = 0
 
     counts = np.zeros((runs, days + 1, N_STATES), dtype=np.int32)
     counts[:, 0] = _count_states(state)
@@ -169,6 +176,8 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         timer -= sick
         done = sick & (timer <= 0)
         turning = done & ~zombie
+        zombie_day[turning[0]] = day
+        exorcised_day[(done & zombie)[0]] = day
         np.copyto(state, R, where=done & zombie)
         np.copyto(state, I, where=turning)
         np.copyto(timer, sick_days, where=turning)
@@ -209,6 +218,7 @@ def simulate_policy(city: City, cfg: SimConfig, beta: float, policy: str,
         doses_by_day=doses_by_day, vaccinated_non_eligible=non_eligible_hits,
         bitten_day=bitten_day, vaccinated_day=vaccinated_day,
         spent=spent, closed_days=closed_days, closed_first=closed_first,
+        zombie_day=zombie_day, exorcised_day=exorcised_day,
     )
 
 

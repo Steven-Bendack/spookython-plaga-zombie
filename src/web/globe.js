@@ -22,6 +22,8 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
   let w = 0;
   let h = 0;
   let stars = [];
+  let embers = [];
+  let smoke = [];
   let land = null;
   let borders = null;
   let ecuador = null;
@@ -47,6 +49,15 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
     canvas.style.height = `${h}px`;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     if (mode === "idle") { scale = restScale(); shift = restShift(); }
+    // Ash and embers rising in the background, and smoke drifting over the planet.
+    embers = Array.from({ length: Math.round((w * h) / 9000) }, () => ({
+      x: Math.random() * w, y: Math.random() * h, r: 0.6 + Math.random() * 1.8,
+      v: 6 + Math.random() * 18, sway: Math.random() * Math.PI * 2, hot: Math.random() < 0.55,
+    }));
+    smoke = Array.from({ length: w < 700 ? 12 : 34 }, () => ({  // fewer clouds on phones: each is a costly gradient
+      lon: Math.random() * 360 - 180, lat: Math.random() * 120 - 60,
+      size: 0.08 + Math.random() * 0.16, drift: 2 + Math.random() * 5, a: 0.18 + Math.random() * 0.22,
+    }));
     stars = Array.from({ length: Math.round((w * h) / 2200) }, () => ({
       x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.2 + 0.2, a: Math.random() * 0.6 + 0.15, tw: Math.random() * 6,
     }));
@@ -98,32 +109,42 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
       }
       ctx.globalAlpha = 1;
     }
+    for (const e of embers) {
+      const y = (e.y - t * e.v) % h;
+      const ey = y < 0 ? y + h : y;
+      const ex = e.x + Math.sin(t * 0.8 + e.sway) * 12;
+      ctx.globalAlpha = 0.35 + 0.35 * Math.sin(t * 3 + e.sway);
+      ctx.fillStyle = e.hot ? "#ff8a3d" : "#5a4a46";
+      ctx.fillRect(ex, ey, e.r, e.r);
+    }
+    ctx.globalAlpha = 1;
 
-    // Atmosphere: a red-tinged halo, the planet is sick.
+    // Atmosphere: the planet burns — an orange-red halo.
     const halo = ctx.createRadialGradient(cx, cy, scale * 0.92, cx, cy, scale * 1.28);
-    halo.addColorStop(0, "rgba(255, 70, 50, 0.38)");
-    halo.addColorStop(0.35, "rgba(160, 30, 40, 0.14)");
+    halo.addColorStop(0, "rgba(255, 110, 40, 0.5)");
+    halo.addColorStop(0.35, "rgba(190, 40, 30, 0.2)");
     halo.addColorStop(1, "rgba(80, 0, 20, 0)");
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.arc(cx, cy, scale * 1.28, 0, Math.PI * 2); ctx.fill();
 
     // Ocean.
     const ocean = ctx.createRadialGradient(cx - scale * 0.35, cy - scale * 0.35, scale * 0.1, cx, cy, scale);
-    ocean.addColorStop(0, "#123247");
-    ocean.addColorStop(1, "#050d16");
+    ocean.addColorStop(0, "#2a2226");
+    ocean.addColorStop(0.6, "#160d10");
+    ocean.addColorStop(1, "#060304");
     ctx.beginPath(); path(sphere); ctx.fillStyle = ocean; ctx.fill();
 
     ctx.beginPath(); path(graticule);
-    ctx.strokeStyle = "rgba(120, 170, 210, 0.08)"; ctx.lineWidth = 0.7; ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 120, 80, 0.05)"; ctx.lineWidth = 0.7; ctx.stroke();
 
     if (land) {
       ctx.beginPath(); path(land);
-      ctx.fillStyle = "#2a4556"; ctx.fill();
-      ctx.strokeStyle = "rgba(170, 215, 240, 0.5)"; ctx.lineWidth = 0.8; ctx.stroke();
+      ctx.fillStyle = "#4a3326"; ctx.fill();  // scorched land
+      ctx.strokeStyle = `rgba(255, 120, 50, ${0.45 + 0.15 * Math.sin(t * 1.7)})`; ctx.lineWidth = 1; ctx.stroke();  // coasts glowing like embers
     }
     if (borders) {
       ctx.beginPath(); path(borders);
-      ctx.strokeStyle = "rgba(170, 215, 240, 0.22)"; ctx.lineWidth = 0.6; ctx.stroke();
+      ctx.strokeStyle = "rgba(255, 150, 90, 0.16)"; ctx.lineWidth = 0.6; ctx.stroke();
     }
     if (ecuador) {
       ctx.beginPath(); path(ecuador);
@@ -141,18 +162,36 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
       if (!pt) continue;
       const age = cycle - d.at;
       if (age < 1) {
-        ctx.strokeStyle = `rgba(255, 90, 70, ${0.8 * (1 - age)})`;
+        ctx.strokeStyle = `rgba(255, 140, 60, ${0.8 * (1 - age)})`;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.arc(pt[0], pt[1], dotR * (1 + age * 5), 0, Math.PI * 2); ctx.stroke();
       }
-      ctx.fillStyle = "rgba(255, 50, 50, 0.85)";
-      ctx.beginPath(); ctx.arc(pt[0], pt[1], dotR, 0, Math.PI * 2); ctx.fill();
+      // A burning city: a flickering glow with a hot core.
+      const flicker = 0.75 + 0.25 * Math.sin(t * 9 + d.at * 13);
+      ctx.fillStyle = `rgba(255, 90, 20, ${0.22 * flicker})`;
+      ctx.beginPath(); ctx.arc(pt[0], pt[1], dotR * 4 * flicker, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = flicker > 0.9 ? "#ffd36b" : "#ff6a1f";
+      ctx.beginPath(); ctx.arc(pt[0], pt[1], dotR * 1.35, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Smoke drifting over the planet (only the clouds on the visible side).
+    for (const c of smoke) {
+      const p = [c.lon + t * c.drift, c.lat];
+      if (d3.geoDistance(p, center) > 1.4) continue;
+      const pt = projection(p);
+      if (!pt) continue;
+      const rad = scale * c.size;
+      const g = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], rad);
+      g.addColorStop(0, `rgba(30, 24, 26, ${c.a})`);
+      g.addColorStop(1, "rgba(30, 24, 26, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(pt[0], pt[1], rad, 0, Math.PI * 2); ctx.fill();
     }
 
     // Terminator: a soft night side on the lower right.
     const shade = ctx.createRadialGradient(cx - scale * 0.5, cy - scale * 0.5, scale * 0.4, cx, cy, scale * 1.05);
     shade.addColorStop(0, "rgba(0, 0, 0, 0)");
-    shade.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+    shade.addColorStop(1, "rgba(0, 0, 0, 0.42)");
     ctx.beginPath(); path(sphere); ctx.fillStyle = shade; ctx.fill();
 
     // Manta beacon.

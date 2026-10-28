@@ -133,6 +133,7 @@ function initIntro() {
     setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce ? 0 : 900);
     // The city stays in view while the camera lands: no card over the map.
     await flyToCity(reduce);
+    sound.laugh();  // children playing far away: the city does not know yet
     $("#game").classList.add("is-live");
     $("#ticker").textContent = "Manta duerme tranquila… por ahora. Ajusta las condiciones y pulsa RECOMENDAR para simular el brote.";
     $("#runStatus").textContent = "Pulsa para simular el brote";
@@ -886,6 +887,7 @@ function makeRun(payload, data, vaccinates) {
   const lastBite = bitten.reduce((m, p) => Math.max(m, p[2]), 0);
   return {
     bitten, vaccinated, latent: cfg.latent_mean, sick, label: payload.label, counts: payload.counts, closed: payload.closed,
+    source: payload.source || [],
     events: buildEvents(bitten, data, payload, vaccinates, vaccinated),
     lastDay: Math.min(cfg.days, Math.ceil(lastBite + sick + 2)),
     peak: Math.max(1, ...(payload.counts || []).map((c) => c[2])),
@@ -1316,6 +1318,9 @@ function drawPeople() {
   badge.hidden = names.length === 0;
   badge.textContent = names.join(" · ");
   sound.setTension((zombies / n) * 10);
+  // A bite sound for every wave of new cases while the run plays (rate-limited in sound.js).
+  if (mapState.playing && bittenSoFar > (mapState.heardBitten ?? Infinity)) sound.infect((bittenSoFar - mapState.heardBitten) / 30);
+  mapState.heardBitten = bittenSoFar;
   const ev = split || mapState.holdTicker ? null : run.events.filter((e) => e.day <= day).at(-1);
   const ticker = $("#ticker");
   if (ev && ticker.textContent !== ev.text) {
@@ -1323,9 +1328,32 @@ function drawPeople() {
     ticker.classList.remove("is-new");
     void ticker.offsetWidth;
     ticker.classList.add("is-new");
-    if (mapState.playing) sound.bite();
+    if (mapState.playing) {
+      sound.bite();
+      if (ev.text.includes("la plaga llega a")) sound.groan();
+      if (ev.text.includes("1 de cada 4")) sound.laugh(true);  // the same children, after the plague
+    }
   }
 }
+
+// A pixel skull for Zombies when the camera is close to the city (dots read better far away).
+const SKULL = (() => {
+  const rows = [
+    ".KKKKK.",
+    "KRRRRRK",
+    "KRkRkRK",
+    "KRkRkRK",
+    "KRRRRRK",
+    ".KRkRK.",
+    ".KRRRK.",
+  ];
+  const colors = { K: "#1a0508", R: "#ff3b3b", k: "#1a0508" };
+  const c = document.createElement("canvas");
+  c.width = rows[0].length; c.height = rows.length;
+  const g = c.getContext("2d");
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (colors[ch]) { g.fillStyle = colors[ch]; g.fillRect(x, y, 1, 1); } }));
+  return c;
+})();
 
 // One run's people on the canvas; returns today's counts.
 function drawRun(ctx, run, T, day, r, now) {
@@ -1352,6 +1380,27 @@ function drawRun(ctx, run, T, day, r, now) {
     if (age < run.latent) later.bitten.push(pt);
     else if (age < run.sick) { zombies += 1; later.zombie.push([pt, i]); }
     else later.trail.push(pt);  // already exorcised: leaves a mark where the plague passed
+  }
+  // Contagion lines: from the most likely source (a real contact who was a Zombie that day) to each
+  // new case, fading over three days, so the chains of the outbreak can be followed on the map.
+  if (run.source.length) {
+    ctx.lineWidth = Math.max(0.8, r * 0.35);
+    ctx.lineCap = "round";
+    for (const fade of [0.55, 0.3, 0.12]) {
+      const maxAge = fade === 0.55 ? 1 : fade === 0.3 ? 2 : 3;
+      ctx.strokeStyle = `rgba(255, 70, 60, ${fade})`;
+      ctx.beginPath();
+      for (let i = 0; i < run.bitten.length; i += 1) {
+        const p = run.bitten[i];
+        const age = day - p[2];
+        const from = run.source[i];
+        if (from < 0 || age < maxAge - 1 || age >= maxAge) continue;
+        const q = run.bitten[from];
+        ctx.moveTo(q[3] * T.k + T.dx, q[4] * T.k + T.dy);
+        ctx.lineTo(p[3] * T.k + T.dx, p[4] * T.k + T.dy);
+      }
+      ctx.stroke();
+    }
   }
   // The trail: a permanent dark-red stain under everything, drawn as one path (cheap with thousands).
   if (later.trail.length) {
@@ -1387,11 +1436,16 @@ function drawRun(ctx, run, T, day, r, now) {
     ctx.beginPath(); ctx.arc(pt.x, pt.y, r * (1.3 + age * 5), 0, Math.PI * 2); ctx.stroke();
   }
   // Zombies: red with a breathing halo, always on top.
+  const skulls = r >= 3;
+  if (skulls) ctx.imageSmoothingEnabled = false;
   for (const [pt, i] of later.zombie) {
     const pulse = 1 + 0.3 * Math.sin(now * 3 + i);
     ctx.fillStyle = "rgba(255, 59, 59, 0.16)";
     ctx.beginPath(); ctx.arc(pt.x, pt.y, r * 2.3 * pulse, 0, Math.PI * 2); ctx.fill();
-    dot(pt, r * 1.05, "#ff3b3b");
+    if (skulls) {
+      const size = Math.round(r * 2.6);
+      ctx.drawImage(SKULL, Math.round(pt.x - size / 2), Math.round(pt.y - size / 2), size, size);
+    } else dot(pt, r * 1.05, "#ff3b3b");
   }
   return { zombies, bitten: bittenSoFar, vax };
 }
