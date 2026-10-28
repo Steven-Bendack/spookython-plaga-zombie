@@ -1038,3 +1038,6 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 .verdict__more[open] summary::before, .cert__box[open] summary::before { content: "▾ "; }
 .verdict__more summary:hover, .cert__box summary:hover { color: var(--ink); }
 .verdict__more .verdict__text { margin-top: 8px; }
+
+/* The map's own background matches the dark tiles, so a tile still loading never shows as a patch */
+.map, .leaflet-container { background: #26262a; }

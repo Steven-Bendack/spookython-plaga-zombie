@@ -144,6 +144,15 @@ function initIntro() {
   $("#enterSound").focus();
 }
 
+// Once landed, the map stays on Manta and its surroundings (the sea, the airport, the road
+// to Portoviejo): zooming out further only showed half-loaded tiles of the whole continent.
+const MANTA_BOUNDS = [[-1.30, -81.10], [-0.65, -80.30]];
+function lockToManta(map) {
+  map.setMinZoom(map.getSize().x < 600 ? 9 : 10);
+  map.setMaxBounds(MANTA_BOUNDS);
+  map.options.maxBoundsViscosity = 0.8;
+}
+
 function flyToCity(reduce) {
   const map = mapState.leaflet;
   mapState.flown = true;
@@ -153,6 +162,7 @@ function flyToCity(reduce) {
     const done = () => {
       map.removeLayer(mapState.pin);
       mapState.tiles.dark.addLayer(mapState.darkLabels);
+      lockToManta(map);
       resolve();
     };
     if (reduce) { map.setView(CITY, zoom, { animate: false }); return done(); }
