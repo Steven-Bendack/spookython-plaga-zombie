@@ -2,9 +2,9 @@
 
 **SpookyThon 2026 · Track B.** Herramienta del Comité de Contención de Manta: simula día a día cómo se propaga una plaga en una red de contactos de la ciudad, reparte vacunas escasas con distintas estrategias y demuestra con cientos de corridas pareadas cuánta gente salva cada una frente a **no hacer nada** y frente a **vacunar al azar con las mismas dosis**.
 
-> URL pública en AWS: _pendiente de despliegue (la cuenta con Budget ya existe)_ · Vista previa en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
+> URL pública en AWS: _pendiente: la cuenta nueva sigue con la restricción del plan gratuito de AWS (ver «Estado del despliegue en AWS»)_ · App en vivo en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
 
-**Pitch (PDF, 10 diapositivas):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
+**Pitch (PDF, 13 diapositivas):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
 
 ![Arquitectura](docs/arquitectura.png)
 
@@ -63,7 +63,7 @@ Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 
 | 4 | Muchas corridas, promedios y rangos | ✅ | 100 corridas por política (40 en Vercel); promedio, rango del 90 % e IC 95 % en la interfaz |
 | 5 | Interfaz para cambiar contagio, vacunas e inicio | ✅ | Controles R0, vacunas por día y "Dónde empieza", más los presets de Brote Sorpresa |
 | 6 | Reproducible | ✅ | Misma config + semilla ⇒ mismo JSON byte a byte (prueba) y mismo hash en local y en Vercel |
-| 7 | Desplegado en AWS | ⏳ **Pendiente** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` pasa); cuenta del equipo con Budget creada; falta el despliegue |
+| 7 | Desplegado en AWS | ⏳ **Bloqueado por AWS** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` y `sam build` pasan). La cuenta tiene Budget y plan de pago, pero AWS mantiene la política `p-8jgrv0xy` del plan gratuito, que niega Lambda, CloudFormation, S3 y API Gateway. Detalle abajo |
 | 8 | README con supuestos y fuentes | ✅ | Este README y [docs/supuestos.md](docs/supuestos.md) |
 
 Regla de la cuenta: **AWS Budget con alerta creado** (presupuesto «plaga zombie» de 10 US$ al mes, captura abajo).
@@ -125,7 +125,18 @@ AWS Budget con alerta (una vez, antes de desplegar; luego tomar la captura en la
 aws budgets create-budget --account-id <ID_DE_CUENTA>   --budget '{"BudgetName":"plaga-zombie","BudgetLimit":{"Amount":"10","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}'   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":50,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"<CORREO>"}]}]'
 ```
 
-Antes de desplegar, revisar en **Service Quotas** la concurrencia de Lambda de la cuenta: en cuentas nuevas puede ser baja. Si es menor a 50, bajar `MaxFanout` y `MapMaxConcurrency` en `sam deploy` o pedir un aumento.
+Antes de desplegar, revisar en **Service Quotas** la concurrencia de Lambda de la cuenta: en cuentas nuevas es **10**. Con ese valor hay que desplegar con `--parameter-overrides MaxFanout=8 MapMaxConcurrency=8` (quedan 2 lugares para la API y el agregador) y pedir el aumento a 1 000.
+
+### Estado del despliegue en AWS (27 de octubre, noche)
+
+Lo que pasó, con evidencia de la CLI:
+
+1. Las cuentas creadas con el **registro nuevo de AWS** quedan como *sandbox* del plan gratuito, dentro de una organización que administra AWS, con un rol `AccountFullAccessRole` y una política de control de servicios (SCP) que solo permite una lista de servicios.
+2. En nuestra cuenta (`509306734195`) esa SCP (`p-8jgrv0xy`) niega con *explicit deny* `lambda:*`, `cloudformation:*`, `states:*`, `apigateway:*`, `s3:CreateBucket`, `ec2:RunInstances` y Lightsail. Solo deja leer y crear roles de IAM.
+3. Pasamos la cuenta al **plan de pago** (`aws freetier get-account-plan-state` → `PAID / ACTIVE`, 120 US$ de créditos), pero la SCP siguió activa después de 15 minutos de espera. Solo AWS Support puede retirarla.
+4. Mientras tanto, la app corre igual (mismo motor y misma API) en Vercel, y el servidor ya acepta `HOST`, `PORT` y `MAX_RUNS` para correr en un contenedor.
+
+En cuanto AWS retire la SCP, el despliegue es un comando (`scripts/deploy_aws.sh` con los parámetros de arriba) y esta sección se reemplaza por la URL pública.
 
 Seguridad: buckets privados (la web solo se lee desde CloudFront con OAC), un rol por función con el mínimo permiso (SAM policy templates), API con throttling y límites de parámetros en el motor, resultados cifrados y con expiración.
 

@@ -46,14 +46,17 @@ Escenario de uso del evento: 500 "Recomendar" + 10 trabajos de Modo Jurado + 5 m
 Protecciones contra un gasto inesperado:
 - HTTP API con **throttling** (5 peticiones/s, ráfaga de 10).
 - Límites en el motor: máximo 200 corridas por petición pública, 40 000 agentes y 365 días (`SimConfig.validated`).
-- Fan-out acotado (`MaxFanout` = 10) y `MaxConcurrency` del Distributed Map = 40.
+- Fan-out acotado (`MaxFanout` = 10) y `MaxConcurrency` del Distributed Map = 40; en una cuenta nueva con concurrencia de Lambda = 10 se despliega con 8 y 8.
 - Resultados en S3 con expiración a los 30 días.
-- **AWS Budget con alerta** (captura en `docs/budget.png`, pendiente de que el equipo cree la cuenta).
+- **AWS Budget con alerta** de 10 US$ al mes (captura en `docs/budget.png`).
 
 ## Gasto real del evento
 
-> Pendiente: se completa con Cost Explorer al final del evento (servicio por servicio y total), junto con la captura del Budget.
+Leído con Cost Explorer (`aws ce get-cost-and-usage`, costo sin combinar, 1 al 28 de octubre de 2026) en las dos cuentas del equipo:
 
-| Fecha | Fuente | Gasto |
-|---|---|---|
-| — | Cost Explorer | pendiente |
+| Fecha | Cuenta | Fuente | Gasto |
+|---|---|---|---|
+| 2026-10-27 | 144501241198 (primera cuenta) | Cost Explorer | **USD 0,00** |
+| 2026-10-27 | 509306734195 (cuenta del despliegue) | Cost Explorer | **USD 0,00** |
+
+Créditos disponibles en la cuenta del despliegue: **USD 120** (`aws freetier get-account-plan-state`). El gasto es cero porque AWS todavía no permite crear los recursos (ver el README, «Estado del despliegue en AWS»); la vista previa del evento corre en Vercel, plan gratuito.
