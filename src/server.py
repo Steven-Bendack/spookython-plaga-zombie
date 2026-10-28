@@ -7,6 +7,7 @@ Uses only the standard library. Simulations run in a local process pool.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -22,6 +23,14 @@ from engine.montecarlo import process_pool_runner  # noqa: E402
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_BODY = 16_384
+# In the cloud container (AWS Lightsail) the machine is small, so runs per request are capped.
+MAX_RUNS = int(os.environ.get("MAX_RUNS", "0"))  # 0 = no cap (local)
+
+
+def capped(body: dict) -> dict:
+    if MAX_RUNS:
+        body["runs"] = min(int(body.get("runs", MAX_RUNS)), MAX_RUNS)
+    return body
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -43,9 +52,9 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({"error": "El cuerpo no es JSON válido."}, HTTPStatus.BAD_REQUEST)
         try:
             if self.path.startswith("/api/simulate"):
-                return self._json(simulate(body, process_pool_runner))
+                return self._json(simulate(capped(body), process_pool_runner))
             if self.path.startswith("/api/challenge"):
-                return self._json(challenge(body, process_pool_runner))
+                return self._json(challenge(capped(body), process_pool_runner))
             if self.path.startswith("/api/report"):
                 return self._json(mayor_report(body))
             if self.path.startswith("/api/jury"):
@@ -70,10 +79,11 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main(port: int = 8000) -> None:
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    # HOST=0.0.0.0 inside a container; locally it only listens on this machine.
+    server = ThreadingHTTPServer((os.environ.get("HOST", "127.0.0.1"), port), Handler)
     print(f"Plaga Zombie listo en http://localhost:{port}", flush=True)
     server.serve_forever()
 
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else 8000)
+    main(int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", "8000")))
