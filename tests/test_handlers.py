@@ -51,7 +51,6 @@ def test_unknown_route_is_a_404(api):
     assert api.handler(_event("GET", "/api/nope"), None)["statusCode"] == 404
 
 
-<<<<<<< Updated upstream
 class _FakeLambda:
     """Throttles the first `fail` invokes, then echoes the task back."""
 
@@ -85,7 +84,8 @@ def test_full_concurrency_is_a_clear_503(monkeypatch):
     res = api.handler(_event("POST", "/api/simulate", {"runs": 2, "population": 2000, "days": 20}), None)
     assert res["statusCode"] == 503
     assert "mucha gente" in json.loads(res["body"])["error"]
-=======
+
+
 def test_a_body_that_is_not_utf8_is_a_400_not_a_crash(api):
     import base64
     event = {"requestContext": {"http": {"method": "POST"}}, "rawPath": "/api/parse",
@@ -99,4 +99,3 @@ def test_parse_and_news_routes(api):
     weeks = [{"week": 1, "zombies": 5, "bitten": 9, "vaccinated": 0, "barrios": ["Tarqui"]}]
     res = api.handler(_event("POST", "/api/news", {"weeks": weeks, "strategy": "degree"}), None)
     assert res["statusCode"] == 200 and len(json.loads(res["body"])["news"]) == 1
->>>>>>> Stashed changes
