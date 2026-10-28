@@ -5,6 +5,12 @@
 // Port of Manta: the ship comes in from the open sea to the dock.
 export const SEA = [-0.895, -80.745];
 export const DOCK = [-0.9372, -80.7208];
+// Eloy Alfaro airport: the plane lands from the east along the runway.
+export const AIR_FROM = [-0.985, -80.56];
+export const AIRPORT = [-0.9469, -80.6795];
+// The road from Portoviejo (E30) enters Manta from the southeast.
+export const PORTOVIEJO = [-1.054, -80.454];
+export const ROAD_IN = [-0.990, -80.680];
 
 // ---------- street routing: shortest path on the street graph ----------
 
@@ -137,7 +143,18 @@ const CAR = [
   "yyyyyyyyyyyy",
   ".kk.....kk..",
 ];
+const PLANE = [
+  "..t.................",
+  "..tt........ww......",
+  "..ttt.......www.....",
+  "wwwwwwwwwwwwwwwwwwn.",
+  "wbwbwbwbwbwbwbwwwwnn",
+  "wwwwwwwwwwwwwwwwwwn.",
+  "............www.....",
+  "............ww......",
+];
 const PALETTE = {
+  t: "#b8432f", n: "#2b2f45",
   s: "#9aa6b2", c: "#2b2f45", w: "#e8e4dc", b: "#3fa8d8", r: "#f2f2f2", R: "#b8432f", k: "#151018",
   y: "#f2c230", l: "#fff6b0",
 };
@@ -151,4 +168,4 @@ function image(grid) {
   return { img, w: grid[0].length, h: grid.length };
 }
 
-export const SPRITES = { ship: image(SHIP), car: image(CAR) };
+export const SPRITES = { ship: image(SHIP), car: image(CAR), plane: image(PLANE) };

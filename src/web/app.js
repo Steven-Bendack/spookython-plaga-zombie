@@ -3,7 +3,7 @@ import * as sound from "./sound.js";
 import { createGlobe, HANDOFF_ZOOM } from "./globe.js";
 import { ghostSVG } from "./ghost.js";
 import { humanSVG, turnedSVG, zombieSVG } from "./sprites.js";
-import { DOCK, SEA, SPRITES, along, route, streetGraph } from "./arrival.js";
+import { AIRPORT, AIR_FROM, DOCK, PORTOVIEJO, ROAD_IN, SEA, SPRITES, along, route, streetGraph } from "./arrival.js";
 const API = window.PLAGA_API || "/api";
 
 const COLORS = {
@@ -973,7 +973,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // ---------- the arrival: a ship docks, a car drives the plague to patient zero ----------
 
 function drawActors(ctx, T, r) {
-  const px = Math.max(1.5, r * 0.75);  // screen pixels per sprite pixel
+  const px = Math.max(3, r * 0.9);  // screen pixels per sprite pixel: big enough to follow at any zoom
   ctx.imageSmoothingEnabled = false;
   for (const a of mapState.actors || []) {
     // A fading wake behind the ship, dust behind the car.
@@ -1038,15 +1038,29 @@ async function arrival(token) {
   mapState.day = -0.01;  // nobody is bitten until the car arrives
   mapState.shots = mapState.shots.filter((s) => s.day > 0);  // this scene replaces the patient-zero shot
 
-  ticker("Día 0: un barco de carga entra al puerto de Manta…");
-  await flyAndWait([(SEA[0] + DOCK[0]) / 2, (SEA[1] + DOCK[1]) / 2], 14, 1.3);
-  if (!cancelled()) await moveActor("ship", [SEA, DOCK], 2600, token, false);
+  // How it arrives: the market sits by the port (ship), schools fill from the road (car),
+  // anywhere else the seed decides, so the same link always shows the same arrival.
+  const cfg = (mapState.split ? mapState.split.data : mapState.data).config;
+  const way = { market: "ship", school: "road" }[cfg.seed_location] || ["plane", "ship", "road"][Math.abs(cfg.seed) % 3];
+  const scenes = {
+    ship: { from: SEA, to: DOCK, actor: "ship", ms: 2800, zoom: 14,
+      start: "Día 0: un barco de carga entra al puerto de Manta…", landed: "baja un pasajero que no se siente bien" },
+    plane: { from: AIR_FROM, to: AIRPORT, actor: "plane", ms: 3200, zoom: 13,
+      start: "Día 0: un avión aterriza en el aeropuerto Eloy Alfaro…", landed: "baja un pasajero con fiebre" },
+    road: { from: PORTOVIEJO, to: ROAD_IN, actor: "car", ms: 3600, zoom: 12,
+      start: "Día 0: un carro llega por la vía desde Portoviejo…", landed: "el conductor no se siente bien" },
+  };
+  const scene = scenes[way];
+  ticker(scene.start);
+  await flyAndWait(scene.from, scene.zoom, 1.1);
+  if (!cancelled()) await moveActor(scene.actor, [scene.from, scene.to], scene.ms, token, true);  // the camera rides along
   if (!cancelled()) {
-    ticker(`Día 0: baja un pasajero que no se siente bien y toma un carro hacia ${barrio}…`);
-    await flyAndWait(DOCK, 15, 0.9);
+    if (scene.actor !== "car") mapState.actors = mapState.actors.filter((x) => x.kind !== scene.actor);
+    ticker(`Día 0: ${scene.landed} y sigue en carro hacia ${barrio}…`);
+    await flyAndWait(scene.to, 15, 0.8);
   }
   if (!cancelled()) {
-    const path = route(mapState.graph, DOCK, [zero[0], zero[1]]);
+    const path = route(mapState.graph, scene.to, [zero[0], zero[1]]);
     await moveActor("car", path, Math.min(5500, Math.max(2500, path.length * 45)), token, true);
   }
   if (!cancelled()) {
