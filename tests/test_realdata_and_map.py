@@ -63,3 +63,16 @@ def test_map_replays_the_median_run_exactly():
     assert sorted(per_run)[len(per_run) // 2] == per_run[run]
     replay_saved = len(out["map"]["none"]["bitten"]) - len(out["map"]["strategy"]["bitten"])
     assert replay_saved == per_run[run]
+
+
+def test_every_agent_stands_on_a_real_street_home_of_its_barrio():
+    # Coastal barrios used to scatter people into the sea; homes must come from OSM streets.
+    import numpy as np
+    from engine.population import _street_homes, build_city
+    city = build_city(10_000, 2026)
+    homes = _street_homes()
+    assert homes is not None
+    for b, points in enumerate(homes):
+        mine = city.coords[city.barrio == b]
+        nearest = np.min(np.abs(mine[:, None, :] - points[None, :, :]).max(axis=2), axis=1)
+        assert nearest.max() < 0.0003, f"barrio {b}: someone is {nearest.max() * 111_000:.0f} m from any home"
