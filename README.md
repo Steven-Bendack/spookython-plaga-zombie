@@ -2,7 +2,7 @@
 
 **SpookyThon 2026 · Track B.** Herramienta del Comité de Contención de Manta: simula día a día cómo se propaga una plaga en una red de contactos de la ciudad, reparte vacunas escasas con distintas estrategias y demuestra con cientos de corridas pareadas cuánta gente salva cada una frente a **no hacer nada** y frente a **vacunar al azar con las mismas dosis**.
 
-> URL pública en AWS: _pendiente de despliegue (falta la cuenta con Budget)_ · Vista previa en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
+> URL pública en AWS: _pendiente de despliegue (la cuenta con Budget ya existe)_ · Vista previa en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
 
 **Pitch (PDF, 10 diapositivas):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
 
@@ -63,10 +63,10 @@ Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 
 | 4 | Muchas corridas, promedios y rangos | ✅ | 100 corridas por política (40 en Vercel); promedio, rango del 90 % e IC 95 % en la interfaz |
 | 5 | Interfaz para cambiar contagio, vacunas e inicio | ✅ | Controles R0, vacunas por día y "Dónde empieza", más los presets de Brote Sorpresa |
 | 6 | Reproducible | ✅ | Misma config + semilla ⇒ mismo JSON byte a byte (prueba) y mismo hash en local y en Vercel |
-| 7 | Desplegado en AWS | ⏳ **Pendiente** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` pasa); falta la cuenta del equipo con Budget |
+| 7 | Desplegado en AWS | ⏳ **Pendiente** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` pasa); cuenta del equipo con Budget creada; falta el despliegue |
 | 8 | README con supuestos y fuentes | ✅ | Este README y [docs/supuestos.md](docs/supuestos.md) |
 
-Regla de la cuenta: el **AWS Budget con alerta** (captura abajo) también está pendiente, junto con el punto 7.
+Regla de la cuenta: **AWS Budget con alerta creado** (presupuesto «plaga zombie» de 10 US$ al mes, captura abajo).
 
 ## Cómo correrlo en local
 
@@ -133,7 +133,7 @@ Seguridad: buckets privados (la web solo se lee desde CloudFront con OAC), un ro
 
 ![AWS Budget](docs/budget.png)
 
-_Pendiente: captura del Budget con alerta creado por el equipo._
+Presupuesto de costos «plaga zombie»: 10 US$ al mes desde el 1 de octubre de 2026, con alerta por correo.
 
 ## Costos
 
