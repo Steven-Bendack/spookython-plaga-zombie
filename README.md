@@ -8,6 +8,8 @@
 
 ![Arquitectura](docs/arquitectura.png)
 
+Diagrama de arquitectura: [PNG](docs/arquitectura.png) · [SVG](docs/arquitectura.svg) · fuente editable en draw.io: [docs/arquitectura.drawio](docs/arquitectura.drawio). Público: CloudFront (la web) y la HTTP API; privado: los buckets de S3, las Lambdas y Step Functions.
+
 ## Qué la hace distinta
 
 1. **Torneo con números aleatorios comunes.** Nada, Azar y cuatro estrategias corren con exactamente la misma suerte (quién se cruza con quién, cuánto dura cada etapa, a quién se detecta). Se compara **corrida por corrida**: personas salvadas con su rango y **en cuántas semillas gana** (la tira de 100 marcas de la interfaz).
@@ -175,6 +177,16 @@ infra/            AWS SAM: template, Step Functions y capa de numpy
 tests/            pytest
 docs/             supuestos, decisiones, costos y arquitectura
 ```
+
+## Decisiones de diseño
+
+Las decisiones importantes, con el porqué y las alternativas descartadas, están en **[docs/decisiones.md](docs/decisiones.md)**. En resumen:
+
+- **La estrategia es el torneo automático, no una regla fija**: el Modo Jurado mostró que una regla fija pierde contra Azar cuando R0 ≥ 2,3; el torneo no.
+- **Se compara por la mediana de salvados** contra Azar, no por el promedio, para no premiar una corrida de suerte.
+- **Números aleatorios comunes** por semilla, corrida y propósito: partir el trabajo en procesos o Lambdas no cambia el resultado (hay test).
+- **10 000 agentes** (1 = 27,1 mantenses): 100 corridas × 6 políticas caben en segundos y el modelo se explica en un minuto.
+- **Cierres con el mismo presupuesto que las vacunas**: si las vacunas solas casi no le ganan al azar, el comité prueba cierres sin gastar más.
 
 ## Limitaciones (dichas con honestidad)
 
