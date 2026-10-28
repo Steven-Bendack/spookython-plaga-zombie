@@ -57,7 +57,7 @@ Todos los supuestos, con fuente: **[docs/supuestos.md](docs/supuestos.md)**.
 | Detección | 60 % de los Zombies, 2 días después |
 | Estrategia | automática (torneo) |
 
-Con estos valores y la semilla 2026: «Anillo + conectados» evita en promedio **3 922** contagios frente a no hacer nada y **2 697** frente a Azar, y gana a Azar en **95 de 100** semillas. Cualquiera lo reproduce con `?seed=2026` o con el botón **Copiar enlace para repetir**.
+Con estos valores y la semilla 2026: «Anillo + conectados» evita en promedio **3 920** contagios frente a no hacer nada y **2 696** frente a Azar, y gana a Azar en **95 de 100** semillas. Cualquiera lo reproduce con `?seed=2026` o con el botón **Copiar enlace para repetir**.
 
 Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 4,0), la mitad de las vacunas (10/día), empieza en el mercado, variante que la vacuna cubre a medias (eficacia 50 %).
 
