@@ -1550,33 +1550,74 @@ function initSplit() {
 
 // Event bubbles: each headline pops up over its barrio for a few days.
 function drawBubbles(ctx, map, day, events) {
-  if (map.getZoom() < 11) return;
-  ctx.font = "700 13px 'Barlow Condensed', sans-serif";
+  if (map.getZoom() < 10) return;
+  const small = map.getSize().x < 600;  // phones: a slightly smaller card, same look
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const placed = [];
+  const now = performance.now() / 1000;
   for (const ev of events) {
     const age = day - ev.day;
     if (!ev.bubble?.where || age < 0 || age > 4) continue;
-    const pop = Math.min(1, 0.2 + age * 4);         // grows in during the first quarter day
+    const accent = ev.bubble.color || "#ff3b3b";
+    const isVaccine = accent !== "#ff3b3b";
+    // Pops in with a little overshoot during the first quarter day, fades on the last day.
+    const t = Math.min(1, age * 4);
+    const pop = (1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2) * (small ? 0.86 : 1);
     const pt = map.latLngToContainerPoint([ev.bubble.where.lat, ev.bubble.where.lon]);
-    const text = ev.bubble.title.toUpperCase();
-    const w = ctx.measureText(text).width + 30;
-    const x = pt.x - w / 2;
-    let y = pt.y - 34;
-    while (placed.some((r) => x < r.x + r.w && r.x < x + w && Math.abs(r.y - y) < 24)) y -= 26;
+    const title = ev.bubble.title.toUpperCase();
+    const sub = `DÍA ${ev.day} · SEMANA ${Math.floor(ev.day / 7) + 1}`;
+    ctx.font = "700 14px 'Barlow Condensed', sans-serif";
+    const tw = ctx.measureText(title).width;
+    ctx.font = "600 10px 'Barlow Condensed', sans-serif";
+    const w = Math.max(tw, ctx.measureText(sub).width) + 50;
+    const h = 36;
+    // Kept inside the screen (scaled size on phones), the pointer still lands on the spot.
+    const k = small ? 0.86 : 1;
+    const half = (w * k) / 2;
+    const cx = Math.min(map.getSize().x - 8 - half, Math.max(8 + half, pt.x));
+    const x = Math.round(pt.x + (cx - pt.x) / k - w / 2);
+    let y = Math.round(pt.y - 50 - h / 2);
+    while (placed.some((r) => x < r.x + r.w && r.x < x + w && Math.abs(r.y - y) < h + 6)) y -= h + 8;
     placed.push({ x, y, w });
+
     ctx.save();
-    ctx.globalAlpha = age > 3 ? 4 - age : 1;        // fades on the last day
-    ctx.translate(pt.x, pt.y);
-    ctx.scale(pop, pop);
-    ctx.translate(-pt.x, -pt.y);
-    ctx.fillStyle = ev.bubble.color || "#ff3b3b";
-    ctx.beginPath(); ctx.moveTo(pt.x - 4, y + 10); ctx.lineTo(pt.x, pt.y - 8); ctx.lineTo(pt.x + 4, y + 10); ctx.fill();
-    ctx.fillRect(x, y - 11, w, 22);
-    ctx.fillStyle = "#1a0b10";
-    ctx.beginPath(); ctx.arc(x + 11, y, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillText(text, x + 21, y + 0.5);
+    ctx.globalAlpha = age > 3 ? 4 - age : 1;
+    // A pulse on the exact spot.
+    const ring = (now * 1.2) % 1;
+    ctx.strokeStyle = accent; ctx.lineWidth = 2;
+    ctx.globalAlpha *= 1 - ring;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 6 + ring * 16, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = age > 3 ? 4 - age : 1;
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.translate(pt.x, pt.y); ctx.scale(pop, pop); ctx.translate(-pt.x, -pt.y);
+    // Pointer from the card to the spot.
+    ctx.fillStyle = "rgba(14, 8, 12, 0.94)";
+    ctx.beginPath(); ctx.moveTo(pt.x - 7, y + h / 2 - 1); ctx.lineTo(pt.x, pt.y - 7); ctx.lineTo(pt.x + 7, y + h / 2 - 1); ctx.fill();
+    // The card: dark, rounded, glowing in its accent color.
+    ctx.shadowColor = accent; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.roundRect(x, y - h / 2, w, h, 6); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.roundRect(x, y - h / 2, 5, h, [6, 0, 0, 6]); ctx.fill();
+    // Icon: a pixel skull for the plague, a cyan cross for the first dose.
+    const ix = x + 13, iy = y - 9;
+    if (isVaccine) {
+      ctx.fillStyle = accent;
+      ctx.fillRect(ix + 6, iy + 1, 6, 16); ctx.fillRect(ix + 1, iy + 6, 16, 6);
+    } else {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(SKULL, ix, iy, 18, 18);
+    }
+    ctx.fillStyle = "#fff4ea";
+    ctx.font = "700 14px 'Barlow Condensed', sans-serif";
+    ctx.fillText(title, x + 40, y - 5);
+    ctx.fillStyle = accent;
+    ctx.font = "600 10px 'Barlow Condensed', sans-serif";
+    ctx.fillText(sub, x + 40, y + 9);
     ctx.restore();
   }
 }
