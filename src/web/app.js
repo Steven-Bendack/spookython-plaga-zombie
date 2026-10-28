@@ -479,6 +479,13 @@ function renderResult(data, seconds) {
   const wins = Math.round(data.win_rate_vs_random * data.config.runs);
   $("#recDecision").innerHTML = `${best.description}. <strong>Salva ≈ ${fmt(data.saved_vs_none.mean * scale)} mantenses</strong> `
     + `y le gana al azar en <strong>${wins} de ${data.config.runs}</strong> semillas.`;
+  // A traffic light on how sure the advice is: the share of seeds where it beats Azar.
+  const rate = data.win_rate_vs_random;
+  const level = rate >= 0.9 ? "high" : rate >= 0.7 ? "mid" : "low";
+  const conf = $("#recConfidence");
+  conf.className = `verdict__confidence is-${level}`;
+  conf.textContent = { high: "✔ Confianza alta", mid: "⚠ Confianza media", low: "✖ Confianza baja" }[level]
+    + ` · le gana al azar en ${pct(rate)} de las semillas`;
   $("#recText").textContent = data.recommendation_text;
   // Vaccines alone fall short: the committee's closure advice goes right into the verdict.
   const cp = data.closure_plans;
@@ -1793,7 +1800,7 @@ function drawSpark(canvas, s) {
 
 function renderJury(jury) {
   if (!jury) {
-    $("#autoText").textContent = "Todavía no hay un ataque guardado. Pulsa el botón para lanzar uno.";
+    $("#autoText").textContent = "Todavía no hay una prueba guardada. Pulsa el botón para buscar dónde falla la estrategia.";
     return;
   }
   $("#autoText").textContent = jury.auto_text || "";
@@ -1865,21 +1872,21 @@ async function attack(body) {
     const job = await getJSON(`${API}/jobs/${id}`);
     if (job.status === "SUCCEEDED") return job.report;
     if (job.status !== "RUNNING") throw new Error(`el trabajo terminó en ${job.status}`);
-    $("#juryHint").textContent = `Atacando en AWS (Step Functions, en paralelo)… ${Math.round((performance.now() - started) / 1000)} s`;
+    $("#juryHint").textContent = `Buscando dónde falla la estrategia: probando 24 brotes difíciles en paralelo en AWS… ${Math.round((performance.now() - started) / 1000)} s`;
   }
 }
 
 async function runJury() {
   const btn = $("#runJury");
   btn.disabled = true;
-  $("#juryHint").textContent = "Atacando… prueba unos 30 brotes distintos.";
+  $("#juryHint").textContent = "Buscando dónde falla la estrategia: probando 24 brotes difíciles…";
   try {
     const jury = await attack({ ...readForm(), points: 24 });
     state.jury = jury;
     renderJury(jury);
     $("#juryHint").textContent = `Listo: ${jury.points.length} brotes probados con ${jury.runs_per_point} corridas cada uno.`;
   } catch (err) {
-    $("#juryHint").textContent = `No se pudo correr el ataque: ${err.message}.`;
+    $("#juryHint").textContent = `No se pudo correr la prueba: ${err.message}.`;
   } finally {
     btn.disabled = false;
   }

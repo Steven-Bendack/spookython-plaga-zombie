@@ -257,6 +257,7 @@
           <p class="eyebrow">El comité recomienda</p>
           <h2 class="verdict__name" id="bestName" tabindex="-1"></h2>
           <p class="verdict__decision" id="recDecision"></p>
+          <p class="verdict__confidence" id="recConfidence"></p>
           <p class="verdict__change" id="recChange" role="status" hidden></p>
           <p class="verdict__alert" id="recClosures" role="status" hidden></p>
           <div class="figures">
@@ -384,7 +385,7 @@
         <button type="button" class="drawer__close" data-close aria-label="Cerrar">×</button>
       </div>
       <div class="drawer__body">
-        <p class="hint">Un atacante automático busca los brotes sorpresa donde nuestra estrategia pierde contra Azar.</p>
+        <p class="hint">Ponemos a prueba nuestra propia estrategia: el sistema busca solo los brotes sorpresa donde perdería contra vacunar al azar, antes de que lo haga el jurado.</p>
         <p class="jury__frontier" id="autoText"></p>
         <p class="jury__fixed" id="frontier"></p>
         <div class="jury__shares" id="shares"></div>
@@ -401,7 +402,7 @@
           </div>
         </div>
         <div class="jury__actions">
-          <button type="button" class="btn btn--ghost" id="runJury">Atacar con las condiciones actuales</button>
+          <button type="button" class="btn btn--ghost" id="runJury">Buscar dónde falla, con las condiciones actuales</button>
           <span class="hint" id="juryHint">Prueba unos 30 brotes distintos; tarda alrededor de un minuto.</span>
         </div>
       </div>

@@ -1059,3 +1059,16 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 .chgroups__row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .chgroups__row--barrios { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 .challenge__why { margin: 8px 0 0; padding: 9px 12px; border-left: 3px solid var(--vax); background: rgba(56, 232, 255, .08); font-size: 14px; line-height: 1.4; }
+
+/* Verdict, second pass: a confidence light, the hero number in a glowing card, supporting cards */
+.verdict__confidence { display: inline-block; margin: 0 0 12px; padding: 5px 10px; border-radius: 999px;
+  font: 700 12px var(--display); letter-spacing: .06em; text-transform: uppercase; border: 1px solid; }
+.verdict__confidence.is-high { color: #a8f07a; border-color: rgba(168, 240, 122, .5); background: rgba(120, 200, 80, .12); }
+.verdict__confidence.is-mid { color: #ffc94d; border-color: rgba(255, 201, 77, .5); background: rgba(255, 201, 77, .12); }
+.verdict__confidence.is-low { color: #ff7a6b; border-color: rgba(255, 90, 70, .55); background: rgba(255, 59, 59, .12); }
+.verdict .figures { gap: 8px; border-top: 0; margin-top: 4px; }
+.verdict .figures .figure { padding: 12px 14px; border: 1px solid var(--line-hi); border-radius: 6px; background: rgba(4, 12, 19, .55); }
+.verdict .figures .figure--manta { padding: 14px 16px; border-color: rgba(255, 106, 31, .55);
+  background: linear-gradient(135deg, rgba(255, 106, 31, .14), rgba(255, 106, 31, .03)); box-shadow: 0 0 18px rgba(255, 106, 31, .15); }
+.verdict .figures .figure--manta .figure__value { text-shadow: 0 0 18px rgba(255, 106, 31, .45); }
+.verdict .figures .figure:not(.figure--manta) .figure__value { color: var(--ink); }
