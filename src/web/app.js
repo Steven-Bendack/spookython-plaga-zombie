@@ -417,8 +417,10 @@ async function runSimulation() {
   $("#runHint").textContent = "Corriendo todas las estrategias con la misma semilla. Suele tardar menos de un minuto.";
   try {
     const data = await getJSON(`${API}/simulate`, readForm());
+    const previous = state.last;
     state.last = data;
     renderResult(data, (performance.now() - started) / 1000);
+    renderChange(previous, data);
     history.replaceState(null, "", `?${new URLSearchParams(readForm())}`);
     $("#verdict").classList.remove("is-stale");
     $("#staleNote").hidden = true;
@@ -438,6 +440,32 @@ async function runSimulation() {
     buttons.forEach((b) => { b.disabled = false; b.textContent = "Recomendar"; });
     hideLoading();
   }
+}
+
+// The committee recalculates live: after a change, say what changed and whether the advice moved.
+const CHANGE_FIELDS = {
+  r0: ["R0", (v) => dec(v)], doses_per_day: ["vacunas/día", (v) => fmt(v)],
+  vaccine_efficacy: ["eficacia", (v) => pct(v)], seed_location: ["inicio", (v) => placeName(v)],
+  seed: ["semilla", (v) => v], detection_prob: ["detección", (v) => pct(v)],
+  close_market: ["cierre del mercado", (v) => (v ? "sí" : "no")], close_schools: ["cierre de colegios", (v) => (v ? "sí" : "no")],
+};
+function placeName(v) {
+  return state.meta?.seed_locations.find((x) => x.value === v)?.label || v;
+}
+function renderChange(prev, data) {
+  const box = $("#recChange");
+  if (!prev) { box.hidden = true; return; }
+  const changed = Object.entries(CHANGE_FIELDS)
+    .filter(([k]) => String(prev.config[k]) !== String(data.config[k]))
+    .map(([k, [label, show]]) => `${label} ${show(prev.config[k])} → ${show(data.config[k])}`);
+  if (!changed.length) { box.hidden = true; return; }
+  const before = prev.candidates[0].label;
+  const now = data.candidates[0].label;
+  box.hidden = false;
+  box.classList.toggle("is-moved", before !== now);
+  box.innerHTML = before !== now
+    ? `🔁 <strong>El comité recalculó y cambió de estrategia</strong>: con ${changed.join(", ")} pasó de «${before}» a «${now}».`
+    : `🔁 <strong>El comité recalculó</strong> con ${changed.join(", ")} y «${now}» sigue siendo la mejor.`;
 }
 
 function renderResult(data, seconds) {
@@ -740,8 +768,9 @@ function initMap() {
     tile("Canvas/World_Dark_Gray_Base", { maxNativeZoom: 16, maxZoom: 18, attribution }),
   ]).addTo(map);
   mapState.tiles.sat = L.layerGroup([
-    tile("World_Imagery", { maxZoom: 18, attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics" }),
-    tile("Reference/World_Boundaries_and_Places", { maxZoom: 18 }),
+    // Sharp up to Esri's native zoom; a darker, punchier grade keeps the colored dots readable on the photo.
+    tile("World_Imagery", { maxNativeZoom: 19, maxZoom: 19, className: "sat-tiles", attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics" }),
+    tile("Reference/World_Boundaries_and_Places", { maxNativeZoom: 19, maxZoom: 19 }),
   ]);
   mapState.pin = L.marker(MANTA, { icon: L.divIcon({ className: "", html: '<div class="manta-pin"></div>', iconSize: [18, 18] }) })
     .addTo(map).bindTooltip("Manta", { permanent: true, direction: "right", className: "barrio-label" });
@@ -1021,6 +1050,19 @@ function endScene() {
   mapState.actors = [];
   mapState.inShot = false;
   mapState.holdTicker = false;
+  // Cut mid-scene, the camera may be over the sea or the airport: bring it back to the city,
+  // and check again once any animation still running has finished.
+  const backToCity = () => {
+    const map = mapState.leaflet;
+    if (!map || mapState.playing) return;
+    if (map.getCenter().distanceTo(L.latLng(CITY)) > 3000) {
+      map.stop();
+      map.setView(CITY, cityZoom(), { animate: false });
+      drawPeople();
+    }
+  };
+  backToCity();
+  setTimeout(backToCity, 1600);
 }
 
 async function arrival(token) {
@@ -1299,7 +1341,7 @@ function drawRun(ctx, run, T, day, r, now) {
   };
 
   // Exorcised first (bottom), then vaccinated, bitten, zombies on top.
-  const later = { vax: [], bitten: [], zombie: [], ripple: [] };
+  const later = { vax: [], bitten: [], zombie: [], ripple: [], trail: [] };
   for (let i = 0; i < run.bitten.length; i += 1) {
     const p = run.bitten[i];
     const age = day - p[2];
@@ -1309,11 +1351,18 @@ function drawRun(ctx, run, T, day, r, now) {
     if (age < 1.5) later.ripple.push([pt, age]);
     if (age < run.latent) later.bitten.push(pt);
     else if (age < run.sick) { zombies += 1; later.zombie.push([pt, i]); }
-    else {
-      const fade = Math.min(1, (age - run.sick) / 7);
-      ctx.fillStyle = `rgba(${Math.round(160 - 50 * fade)}, ${Math.round(80 + 25 * fade)}, ${Math.round(90 + 35 * fade)}, ${0.75 - 0.35 * fade})`;
-      ctx.fillRect(pt.x - r * 0.45, pt.y - r * 0.45, r * 0.9, r * 0.9);
-    }
+    else later.trail.push(pt);  // already exorcised: leaves a mark where the plague passed
+  }
+  // The trail: a permanent dark-red stain under everything, drawn as one path (cheap with thousands).
+  if (later.trail.length) {
+    ctx.fillStyle = "rgba(150, 22, 34, 0.32)";
+    ctx.beginPath();
+    for (const pt of later.trail) { ctx.moveTo(pt.x + r * 1.2, pt.y); ctx.arc(pt.x, pt.y, r * 1.2, 0, Math.PI * 2); }
+    ctx.fill();
+    ctx.fillStyle = "rgba(90, 10, 20, 0.55)";
+    ctx.beginPath();
+    for (const pt of later.trail) { ctx.moveTo(pt.x + r * 0.45, pt.y); ctx.arc(pt.x, pt.y, r * 0.45, 0, Math.PI * 2); }
+    ctx.fill();
   }
   for (const p of run.vaccinated) {
     if (p[2] > day) continue;

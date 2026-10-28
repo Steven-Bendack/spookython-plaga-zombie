@@ -1041,3 +1041,14 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 
 /* The map's own background matches the dark tiles, so a tile still loading never shows as a patch */
 .map, .leaflet-container { background: #26262a; }
+
+/* Exorcised = the dark-red trail the plague leaves on the map */
+.seg--gone, .pl--gone i { background: #7a1622 !important; }
+
+/* "The committee recalculated": what changed since the last answer */
+.verdict__change { margin: 0 0 12px; padding: 9px 12px; border-radius: 2px; font-size: 14px; line-height: 1.4;
+  border-left: 3px solid var(--vax); background: rgba(56, 232, 255, .08); animation: rise-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+.verdict__change.is-moved { border-left-color: var(--ecto, #a8d672); background: rgba(168, 214, 114, .1); }
+
+/* Satellite: darker and more contrasted so the plague's colors stand out */
+.sat-tiles { filter: brightness(.78) contrast(1.15) saturate(1.2); }
