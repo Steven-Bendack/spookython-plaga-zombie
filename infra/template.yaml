@@ -14,6 +14,10 @@ Parameters:
     Type: Number
     Default: 40
     Description: Parallel children of the Distributed Map.
+  AlarmEmail:
+    Type: String
+    Default: ""
+    Description: Optional email for the alarms (AWS sends a confirmation link first).
   DeepSeekApiKey:
     Type: String
     Default: ""
@@ -30,6 +34,9 @@ Globals:
     Environment:
       Variables:
         RESULTS_BUCKET: !Ref ResultsBucket
+
+Conditions:
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
 
 Resources:
   # ---------- shared code ----------
@@ -229,6 +236,98 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad      # Managed-CachingDisabled
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # Managed-AllViewerExceptHostHeader
 
+  # ---------- monitoring: one dashboard and alarms that page the team ----------
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Plaga Zombie alarms
+
+  AlertsEmail:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlarmEmail
+    Properties:
+      TopicArn: !Ref AlertsTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+
+  # Any error in the public API (a simulation the jury runs live) is worth knowing at once.
+  ApiErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: The public API (Recomendar, duel, report) returned errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref ApiFunction }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertsTopic]
+
+  # New accounts have a concurrency of 10: throttled workers mean slower answers.
+  WorkerThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Simulation workers were throttled (account concurrency limit)
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions: [{ Name: FunctionName, Value: !Ref WorkerFunction }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertsTopic]
+
+  # A failed Jury Mode / decision map job (Step Functions Distributed Map).
+  JobsFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A big Monte Carlo job (Step Functions) failed
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions: [{ Name: StateMachineArn, Value: !Ref MonteCarloStateMachine }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertsTopic]
+
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}"
+      DashboardBody: !Sub |
+        {"widgets": [
+          {"type": "metric", "x": 0, "y": 0, "width": 12, "height": 6, "properties": {
+            "title": "Invocaciones por función", "region": "${AWS::Region}", "stat": "Sum", "period": 300, "view": "timeSeries",
+            "metrics": [["AWS/Lambda", "Invocations", "FunctionName", "${ApiFunction}", {"label": "API"}],
+                        ["...", "${WorkerFunction}", {"label": "Trabajadores"}],
+                        ["...", "${JobPlanFunction}", {"label": "Planificador"}],
+                        ["...", "${JobAggregateFunction}", {"label": "Agregador"}]]}},
+          {"type": "metric", "x": 12, "y": 0, "width": 12, "height": 6, "properties": {
+            "title": "Errores y throttles", "region": "${AWS::Region}", "stat": "Sum", "period": 300, "view": "timeSeries",
+            "metrics": [["AWS/Lambda", "Errors", "FunctionName", "${ApiFunction}", {"label": "Errores API"}],
+                        ["...", "${WorkerFunction}", {"label": "Errores trabajadores"}],
+                        ["AWS/Lambda", "Throttles", "FunctionName", "${WorkerFunction}", {"label": "Throttles trabajadores"}]]}},
+          {"type": "metric", "x": 0, "y": 6, "width": 12, "height": 6, "properties": {
+            "title": "Duración p95 (ms)", "region": "${AWS::Region}", "stat": "p95", "period": 300, "view": "timeSeries",
+            "metrics": [["AWS/Lambda", "Duration", "FunctionName", "${ApiFunction}", {"label": "API"}],
+                        ["...", "${WorkerFunction}", {"label": "Trabajadores"}]]}},
+          {"type": "metric", "x": 12, "y": 6, "width": 12, "height": 6, "properties": {
+            "title": "Trabajos de Step Functions (Modo Jurado)", "region": "${AWS::Region}", "stat": "Sum", "period": 300, "view": "timeSeries",
+            "metrics": [["AWS/States", "ExecutionsStarted", "StateMachineArn", "${MonteCarloStateMachine}", {"label": "Iniciados"}],
+                        [".", "ExecutionsSucceeded", ".", ".", {"label": "Exitosos"}],
+                        [".", "ExecutionsFailed", ".", ".", {"label": "Fallidos"}]]}},
+          {"type": "alarm", "x": 0, "y": 12, "width": 24, "height": 3, "properties": {
+            "title": "Alarmas", "alarms": ["${ApiErrorsAlarm.Arn}", "${WorkerThrottlesAlarm.Arn}", "${JobsFailedAlarm.Arn}"]}}
+        ]}
+
 Outputs:
   WebUrl:
     Description: Public URL (web + /api)
@@ -240,3 +339,6 @@ Outputs:
     Value: !Ref Distribution
   ApiUrl:
     Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  DashboardUrl:
+    Description: CloudWatch dashboard of the deployment
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards/dashboard/${AWS::StackName}"
