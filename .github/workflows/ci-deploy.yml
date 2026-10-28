@@ -87,6 +87,8 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: us-east-2
+      # The mayor's report: passed as a NoEcho parameter; without it the API answers with the template.
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       STACK: plaga-zombie
       CFN_ROLE: arn:aws:iam::509306734195:role/plaga-zombie-cfn-deploy
       ARTIFACTS: aws-sam-cli-managed-default-samclisourcebucket-ol2nsrrrv51t
@@ -111,13 +113,16 @@ jobs:
           sam deploy --template-file build/sam/template.yaml --stack-name "$STACK" \
             --s3-bucket "$ARTIFACTS" --role-arn "$CFN_ROLE" --capabilities CAPABILITY_IAM \
             --no-confirm-changeset --no-fail-on-empty-changeset \
-            --parameter-overrides MaxFanout=8 MapMaxConcurrency=8
+            --parameter-overrides MaxFanout=8 MapMaxConcurrency=8 DeepSeekApiKey="$DEEPSEEK_API_KEY"
       - name: Upload the web
         run: |
           aws s3 sync src/web "s3://$WEB_BUCKET" --delete --only-show-errors
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "/*" >/dev/null
-      - name: AWS serves this commit
+      - name: AWS serves this commit (and the mayor's report comes from the AI)
         run: |
+          source=$(curl -fsS -X POST "$URL/api/report" -H 'content-type: application/json'             -d '{"strategy":"ring_hubs","r0":2,"doses_per_day":20,"vaccine_efficacy":0.9,"seed_location":"random","runs":100,"manta_scale":27.1,"saved_none":3922,"saved_none_p5":889,"saved_none_p95":6510,"saved_random":2697,"win_rate":0.95,"wasted_share":0.32}'             | python3 -c "import json,sys; print(json.load(sys.stdin)['source'])")
+          echo "mayor report source: $source"
+          if [ -n "$DEEPSEEK_API_KEY" ]; then test "$source" = "ai"; fi
           live=$(curl -fsS -X POST "$URL/api/simulate" -H 'content-type: application/json' \
             -d '{"seed":2026,"runs":2}' | python3 -c "import json,sys; print(json.load(sys.stdin)['certificate']['commit'])")
           echo "live commit: $live"
