@@ -1052,3 +1052,10 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 
 /* Satellite: darker and more contrasted so the plague's colors stand out */
 .sat-tiles { filter: brightness(.78) contrast(1.15) saturate(1.2); }
+
+/* «¿Le ganas al comité?»: groups in two labeled rows, the committee explained, and why it won */
+.challenge__how { margin: -4px 0 12px; font-size: 14px; color: var(--ink-soft); max-width: 80ch; }
+.chgroups__title { grid-column: 1 / -1; margin: 6px 0 0; font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--pumpkin-2); }
+.chgroups__row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.chgroups__row--barrios { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.challenge__why { margin: 8px 0 0; padding: 9px 12px; border-left: 3px solid var(--vax); background: rgba(56, 232, 255, .08); font-size: 14px; line-height: 1.4; }

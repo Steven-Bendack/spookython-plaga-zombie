@@ -507,8 +507,12 @@ const challenge = { plan: [], max: 3 };
 
 function initChallenge(meta) {
   challenge.max = meta.player_max_groups;
-  $("#chGroups").innerHTML = meta.player_groups.map((g) =>
-    `<button type="button" class="chip chip--group" data-group="${g.value}" aria-pressed="false"><span class="chip__name">${g.label}</span><span class="chip__rank"></span></button>`).join("");
+  // Two short rows instead of 14 loose buttons: who people are, and where they live.
+  const chip = (g, label) => `<button type="button" class="chip chip--group" data-group="${g.value}" aria-pressed="false"><span class="chip__name">${label}</span><span class="chip__rank"></span></button>`;
+  const people = meta.player_groups.filter((g) => !g.value.startsWith("barrio:"));
+  const barrios = meta.player_groups.filter((g) => g.value.startsWith("barrio:"));
+  $("#chGroups").innerHTML = `<p class="chgroups__title">Personas</p><div class="chgroups__row">${people.map((g) => chip(g, g.label)).join("")}</div>`
+    + `<p class="chgroups__title">Barrios</p><div class="chgroups__row chgroups__row--barrios">${barrios.map((g) => chip(g, g.label.replace(/^Barrio /, ""))).join("")}</div>`;
   $("#chGroups").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-group]");
     if (btn) togglePlanGroup(btn.dataset.group);
@@ -575,6 +579,10 @@ function renderChallenge(d) {
   $(".score").classList.toggle("is-you", d.player_wins);
   $(".score").classList.toggle("is-committee", !d.player_wins);
   $("#chVerdict").textContent = d.verdict_text;
+  // The panel grew with the result: bring the scoreboard into view.
+  requestAnimationFrame(() => $("#chResult").scrollIntoView({ block: "start", behavior: motionOff() ? "auto" : "smooth" }));
+  // Why: what the committee did differently, in one line.
+  $("#chWhy").textContent = `Por qué: el comité no elige un grupo fijo. Con estas condiciones usó «${d.committee.label}»: ${d.committee.description.charAt(0).toLowerCase()}${d.committee.description.slice(1)}. Tu plan vacuna a tus grupos aunque la plaga esté en otro lado.`;
   // committee_vs_player > 0: the committee saved more in that run.
   const perRun = d.committee_vs_player.per_run;
   const wins = perRun.filter((x) => x < 0).length;

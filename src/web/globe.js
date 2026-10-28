@@ -40,7 +40,9 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
   const restShift = () => (w > 900 ? [w * 0.2, 0] : [0, h * 0.2]);
 
   function resize() {
-    const ratio = window.devicePixelRatio || 1;
+    // Capped at 1.5: on phones (ratio ~2.6) the full resolution cost a third of the frame rate
+    // for detail nobody sees on a moving, glowing globe.
+    const ratio = Math.min(1.5, window.devicePixelRatio || 1);
     w = innerWidth;
     h = innerHeight;
     canvas.width = w * ratio;
@@ -63,24 +65,46 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
     }));
   }
 
-  // Land points that catch the plague, earlier the closer they are to Manta.
+  // Land points that catch the plague, earlier the closer they are to Manta. "Is this land?" is read
+  // from a small raster of the continents drawn once (a few ms) instead of testing each point against
+  // the polygons with d3.geoContains, which froze the intro for 1.5 s on a laptop and ~10 s on a phone.
   function seedInfection(landFeature) {
+    const W = 2048, H = 1024;  // 0.18° per pixel
+    const mask = document.createElement("canvas");
+    mask.width = W; mask.height = H;
+    const mctx = mask.getContext("2d", { willReadFrequently: true });
+    const flat = d3.geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]);
+    mctx.fillStyle = "#fff";
+    mctx.beginPath(); d3.geoPath(flat, mctx)(landFeature); mctx.fill();
+    const pixels = mctx.getImageData(0, 0, W, H).data;
+    const solid = (x, y) => x >= 0 && x < W && y >= 0 && y < H && pixels[(y * W + x) * 4] > 250;
+    // Land with a margin: the pixel and its neighbors all solid, so no dot sits on the coastline.
+    const isLand = (lon, lat, margin = 1) => {
+      const x = Math.floor(((lon + 180) / 360) * W);
+      const y = Math.floor(((90 - lat) / 180) * H);
+      for (let dy = -margin; dy <= margin; dy += 1) {
+        for (let dx = -margin; dx <= margin; dx += 1) if (!solid(x + dx, y + dy)) return false;
+      }
+      return true;
+    };
     const pts = [];
     let tries = 0;
     while (pts.length < 900 && tries < 20000) {
       tries += 1;
       const lon = Math.random() * 360 - 180;
       const lat = (Math.asin(Math.random() * 2 - 1) * 180) / Math.PI;
-      if (lat < -58) continue; // no Antarctica
-      if (!d3.geoContains(landFeature, [lon, lat])) continue;
+      if (lat < -58 || !isLand(lon, lat)) continue;  // no Antarctica, no sea
       const dist = d3.geoDistance(MANTA, [lon, lat]) / Math.PI; // 0..1
       pts.push({ p: [lon, lat], at: (dist ** 0.8) * SPREAD_SECONDS + Math.random() * 2.5 });
     }
-    // A dense cluster around Manta: the city itself.
-    for (let i = 0; i < 70; i += 1) {
+    // A dense cluster around Manta: the city itself, on land only (Manta sits on the coast).
+    for (let i = 0, made = 0; made < 70 && i < 2000; i += 1) {
       const a = Math.random() * Math.PI * 2;
-      const r = Math.random() ** 0.6 * 2.2;
-      pts.push({ p: [MANTA[0] + 0.6 + Math.cos(a) * r, MANTA[1] + Math.sin(a) * r], at: Math.random() * 2.5 });
+      const r = Math.random() ** 0.6 * 1.8;
+      const p = [MANTA[0] + Math.cos(a) * r, MANTA[1] + Math.sin(a) * r];
+      if (!isLand(p[0], p[1], 2)) continue;  // a wider margin on Manta's coast
+      pts.push({ p, at: Math.random() * 2.5 });
+      made += 1;
     }
     return pts;
   }
