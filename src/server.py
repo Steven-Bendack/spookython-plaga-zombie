@@ -39,7 +39,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith("/api/meta"):
-            return self._json(meta())
+            return self._json({**meta(), "max_runs": MAX_RUNS or None})
         return super().do_GET()
 
     def do_POST(self):

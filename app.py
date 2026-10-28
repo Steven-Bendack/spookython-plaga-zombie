@@ -22,7 +22,7 @@ def app(environ, start_response):
     path = environ.get("PATH_INFO", "")
     try:
         if method == "GET" and path.endswith("/api/meta"):
-            return _json(start_response, meta())
+            return _json(start_response, {**meta(), "max_runs": MAX_RUNS})
         if method == "POST" and path.endswith("/api/simulate"):
             body = _body(environ)
             body["runs"] = min(int(body.get("runs", MAX_RUNS)), MAX_RUNS)

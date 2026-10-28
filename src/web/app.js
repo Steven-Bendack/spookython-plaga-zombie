@@ -390,11 +390,14 @@ function markStale(text = "Cambiaste las condiciones. Pulsa Recomendar para actu
 async function runSimulation() {
   const buttons = [$("#run")];
   const started = performance.now();
-  const runs = readForm().runs;
+  // The server may cap the runs (Vercel, small containers): show the number that really runs.
+  const runs = Math.min(+readForm().runs, state.meta?.max_runs || Infinity);
+  const quick = lookupCell(readForm());
+  const hint = quick ? `Mientras tanto, el mapa precalculado apunta a «${labelOf(quick.best)}» (gana a Azar en ${pct(quick.win_rate_vs_random)}). ` : "";
   const label = () => `Simulando… ${Math.round((performance.now() - started) / 1000)} s`;
   const tick = () => {
     buttons.forEach((b) => { b.textContent = label(); });
-    $("#loadingText").textContent = `${runs} corridas por estrategia, todas con la misma suerte · ${Math.round((performance.now() - started) / 1000)} s`;
+    $("#loadingText").textContent = `${hint}Confirmando con ${runs} corridas por estrategia, todas con la misma suerte · ${Math.round((performance.now() - started) / 1000)} s`;
   };
   buttons.forEach((b) => { b.disabled = true; });
   showLoading("Simulando la plaga", "");
@@ -863,6 +866,10 @@ function nearestBarrio(lat, lon, barrios) {
 }
 
 // Headlines of the run, generated from what actually happened in it.
+// "Día 64 (semana 10)" and people rounded to the hundred: the headline is read, not audited.
+const when = (day) => `Día ${day} (semana ${Math.floor(day / 7) + 1})`;
+const people = (x) => fmt(Math.round(x / 100) * 100);
+
 function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
   const label = payload.label;
   const cfg = data.config;
@@ -873,7 +880,7 @@ function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
   const byDay = [...bitten].sort((a, b) => a[2] - b[2]);
   const first = byDay.filter((p) => p[2] === 0).map((p) => nearestBarrio(p[0], p[1], barrios));
   const at = (name) => barrios.find((b) => b.name === name);
-  events.push({ day: 0, text: `Día 0: ${first.length} personas mordidas en ${[...new Set(first)].join(", ")}. Nadie lo sabe todavía.`,
+  events.push({ day: 0, text: `Día 0: aparecen los primeros mordidos en ${[...new Set(first)].join(", ")}. Nadie lo sabe todavía.`,
     bubble: { where: at(first[0]), title: "Paciente cero" } });
 
   const reached = new Set(first);
@@ -881,36 +888,37 @@ function buildEvents(bitten, data, payload, vaccinates, vaccinated = []) {
     const b = nearestBarrio(p[0], p[1], barrios);
     if (!reached.has(b)) {
       reached.add(b);
-      events.push({ day: p[2], text: `Día ${p[2]}: la plaga llega a ${b}.`, bubble: { where: at(b), title: `Llega a ${b}` } });
+      events.push({ day: p[2], text: `${when(p[2])}: la plaga llega a ${b}.`, bubble: { where: at(b), title: `Llega a ${b}` } });
     }
   }
   if (vaccinates && cfg.doses_per_day > 0) {
     // The first dose of the run, on the map where it was given.
     const first = vaccinated.reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
     events.push({ day: first ? first[2] : cfg.vaccine_start_day,
-      text: `Día ${cfg.vaccine_start_day}: llegan las vacunas (${cfg.doses_per_day} al día). Se aplica «${label}».`,
+      text: `${when(cfg.vaccine_start_day)}: llegan las vacunas, ${cfg.doses_per_day} al día. Se aplica «${label}».`,
       bubble: first ? { where: { lat: first[0], lon: first[1] }, title: "Primera vacuna", color: "#3fd0ff" } : undefined });
   }
   const closedSeries = Array.isArray(payload.closed) ? payload.closed : [];
   const places = ["el mercado central", "los colegios"];
   for (let d = 1; d < closedSeries.length; d += 1) {
     for (const k of [0, 1]) {
-      if (closedSeries[d][k] && !closedSeries[d - 1][k]) events.push({ day: d, text: `Día ${d}: el comité cierra ${places[k]}.` });
-      if (!closedSeries[d][k] && closedSeries[d - 1][k]) events.push({ day: d, text: `Día ${d}: reabren ${places[k]}.` });
+      if (closedSeries[d][k] && !closedSeries[d - 1][k]) events.push({ day: d, text: `${when(d)}: el comité cierra ${places[k]}.` });
+      if (!closedSeries[d][k] && closedSeries[d - 1][k]) events.push({ day: d, text: `${when(d)}: reabren ${places[k]}.` });
     }
   }
-  const marks = [0.01, 0.1, 0.25, 0.5];
+  // Milestones in words a mayor reads at a glance, counted in real Manta people.
+  const marks = [[0.01, "1 de cada 100 mantenses"], [0.1, "1 de cada 10 mantenses"], [0.25, "1 de cada 4 mantenses"], [0.5, "la mitad de Manta"]];
   let k = 0;
   byDay.forEach((p, i) => {
-    while (k < marks.length && i + 1 >= marks[k] * n) {
-      events.push({ day: p[2], text: `Día ${p[2]}: ya van ${fmt(i + 1)} mordidos, el ${pct(marks[k])} de la ciudad (≈ ${fmt((i + 1) * scale)} mantenses).` });
+    while (k < marks.length && i + 1 >= marks[k][0] * n) {
+      events.push({ day: p[2], text: `${when(p[2])}: ya mordieron a ${marks[k][1]}, unas ${people((i + 1) * scale)} personas.` });
       k += 1;
     }
   });
   const total = bitten.length;
   const lastBite = byDay.length ? byDay[byDay.length - 1][2] : 0;
   const end = Math.min(cfg.days, Math.ceil(lastBite + cfg.latent_mean + cfg.infectious_mean));
-  events.push({ day: end, text: `Día ${end}: el último zombi fue exorcizado. En total ${fmt(total)} mordidos (≈ ${fmt(total * scale)} en Manta) con «${label}».` });
+  events.push({ day: end, text: `${when(end)}: cae el último zombi. Con «${label}» mordieron a unas ${people(total * scale)} personas, el ${pct(total / n)} de Manta.` });
   return events.sort((a, b) => a.day - b.day);
 }
 
