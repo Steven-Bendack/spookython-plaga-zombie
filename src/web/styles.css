@@ -1132,3 +1132,8 @@ body.calm .wave { display: none; }
 .evcard--hot .evcard__v { color: var(--pumpkin); text-shadow: 0 0 16px rgba(255, 106, 31, .4); }
 .evcard__l { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
 @media (max-width: 620px) { .evcards { grid-template-columns: 1fr; } .evcard { grid-template-columns: auto 1fr; align-items: center; gap: 12px; } .evcard__v { font-size: 24px; } }
+
+/* Rt today: red while the plague grows (Rt ≥ 1), green once it is contained */
+.hud__stat--rt.is-grow strong { color: var(--blood); }
+.hud__stat--rt.is-fall strong { color: var(--ecto, #a8d672); }
+.hud__stat--rt { cursor: help; }

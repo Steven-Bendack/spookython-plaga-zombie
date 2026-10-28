@@ -1047,10 +1047,27 @@ function makeRun(payload, data, vaccinates) {
   return {
     bitten, vaccinated, latent: cfg.latent_mean, sick, label: payload.label, counts: payload.counts, closed: payload.closed,
     source: payload.source || [],
+    rt: effectiveR(bitten, payload.counts || [], cfg.infectious_mean),
     events: buildEvents(bitten, data, payload, vaccinates, vaccinated),
     lastDay: Math.min(cfg.days, Math.ceil(lastBite + sick + 2)),
     peak: Math.max(1, ...(payload.counts || []).map((c) => c[2])),
   };
+}
+
+// Effective reproduction number Rt, day by day, from the replayed run itself (as Covasim reports it):
+// new bites per day over the Zombies active that day divided by how many days each stays contagious,
+// over a 7-day window. Rt > 1: the plague grows; Rt < 1: it is being contained.
+function effectiveR(bitten, counts, infectiousDays) {
+  const days = counts.length;
+  const bites = new Float64Array(days);
+  for (const p of bitten) if (p[2] > 0 && p[2] < days) bites[p[2]] += 1;
+  const rt = new Array(days).fill(null);
+  for (let d = 3; d < days - 3; d += 1) {
+    let num = 0, den = 0;
+    for (let k = d - 3; k <= d + 3; k += 1) { num += bites[k]; den += counts[k][2] / infectiousDays; }
+    if (den >= 1) rt[d] = num / den;
+  }
+  return rt;
 }
 
 function setRun(run, lastDay = run.lastDay, peak = run.peak) {
@@ -1468,6 +1485,11 @@ function drawPeople() {
   $("#hudBitten").textContent = fmt(bittenSoFar);
   $("#hudVax").textContent = fmt(vax);
   $("#hudCity").textContent = pct(bittenSoFar / n);
+  const rt = run.rt?.[Math.floor(day)];
+  const rtBox = $("#hudRt");
+  rtBox.textContent = rt == null ? "—" : dec(rt);
+  rtBox.parentElement.classList.toggle("is-grow", rt != null && rt >= 1);
+  rtBox.parentElement.classList.toggle("is-fall", rt != null && rt < 1);
   $("#daySlider").value = Math.floor(day);
   paintRange($("#daySlider"));
   drawProgress(day);

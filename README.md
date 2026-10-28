@@ -28,6 +28,7 @@ Diagrama de arquitectura: [PNG](docs/arquitectura.png) · [SVG](docs/arquitectur
 
 - **Brote Sorpresa con tus palabras:** en Condiciones se escribe o se dicta el cambio («el doble de contagiosa, empieza en el mercado y solo hay 10 vacunas»). DeepSeek lo traduce a parámetros y el servidor **solo acepta claves y rangos de una lista cerrada** (`src/engine/assistant.py`): un texto malicioso no puede llegar a la simulación (hay tests con respuestas hostiles). Sin IA, un traductor de reglas entiende las frases típicas. Después el comité recalcula solo.
 - **Oleadas en el mapa:** cada semana de la corrida aparece un cartel («⚠ Oleada 2», «☠ Pico de la oleada», «↘ La ola retrocede», «✔ Manta resiste») con un titular de noticiero escrito por la IA **solo con los números de esa corrida**; sin IA, los titulares salen de una plantilla.
+- **Rt en vivo:** el mapa muestra el número reproductivo efectivo de la corrida día a día (contagios nuevos ÷ zombis activos ÷ días contagiosos, ventana de 7 días), como lo reporta Covasim (Kerr et al., *PLOS Comput Biol* 2021). En el escenario base parte en ≈ 2,3, cerca de R0 = 2, y baja de 1 cuando la plaga se apaga: rojo mientras crece, verde cuando se contiene.
 - **Informe para el alcalde:** tres párrafos en lenguaje simple con los números ya validados.
 
 ## El modelo en un minuto
