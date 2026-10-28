@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import boto3
+from botocore.exceptions import ClientError
 
 from engine.api import challenge, meta, simulate
 from engine.config import SimConfig
@@ -33,12 +36,36 @@ RESULTS_BUCKET = os.environ.get("RESULTS_BUCKET", "")
 MAX_FANOUT = int(os.environ.get("MAX_FANOUT", "10"))
 MAX_BODY = 16_384
 MAX_INTERACTIVE_RUNS = int(os.environ.get("MAX_INTERACTIVE_RUNS", "200"))
+THROTTLE_CODES = {"TooManyRequestsException", "ThrottlingException"}
+RETRY_DEADLINE = float(os.environ.get("RETRY_DEADLINE", "20"))  # seconds; API Gateway cuts at 29
+
+
+class Busy(Exception):
+    """The account's Lambda concurrency stayed full past the retry deadline."""
+
+
+def _invoke_with_retry(task: dict, deadline: float) -> dict:
+    # Several visitors at once can exhaust the account's concurrency: a throttled
+    # chunk waits and retries (jittered backoff) instead of failing the request.
+    delay = 0.3
+    while True:
+        try:
+            return _lambda.invoke(FunctionName=WORKER, Payload=json.dumps(task).encode())
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") not in THROTTLE_CODES:
+                raise
+            if time.monotonic() + delay > deadline:
+                raise Busy() from exc
+            time.sleep(delay + random.uniform(0, delay))
+            delay = min(delay * 2, 3.0)
 
 
 def lambda_runner(tasks: list[dict]) -> list[dict]:
     """Run each chunk in its own worker Lambda, MAX_FANOUT at a time."""
+    deadline = time.monotonic() + RETRY_DEADLINE
+
     def invoke(task):
-        res = _lambda.invoke(FunctionName=WORKER, Payload=json.dumps(task).encode())
+        res = _invoke_with_retry(task, deadline)
         payload = json.loads(res["Payload"].read())
         if res.get("FunctionError"):
             raise RuntimeError(payload.get("errorMessage", "worker failed"))
@@ -70,6 +97,8 @@ def handler(event, _context):
             return _ok(_job_status(path.rsplit("/", 1)[-1]))
     except (ValueError, TypeError, KeyError) as exc:
         return _error(400, f"Parámetros inválidos: {exc}")
+    except Busy:
+        return _error(503, "Hay mucha gente simulando a la vez. Vuelve a intentarlo en unos segundos.")
     return _error(404, "Ruta no encontrada.")
 
 
