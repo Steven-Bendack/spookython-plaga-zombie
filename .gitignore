@@ -34,3 +34,6 @@ prof.out
 .atl/
 src/engine/COMMIT
 build/
+
+# Local AI briefs (not part of the project)
+BRIEF*.md
