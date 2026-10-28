@@ -257,23 +257,22 @@
           <p class="eyebrow">El comité recomienda</p>
           <h2 class="verdict__name" id="bestName" tabindex="-1"></h2>
           <p class="verdict__decision" id="recDecision"></p>
-          <p class="verdict__text" id="recText"></p>
           <p class="verdict__alert" id="recClosures" role="status" hidden></p>
           <div class="figures">
+            <div class="figure figure--manta">
+              <span class="figure__value" id="savedManta"></span>
+              <span class="figure__label">mantenses que no se contagian, frente a no hacer nada (escala 1 : <span id="scale"></span>)</span>
+              <span class="figure__range" id="wasted"></span>
+            </div>
             <div class="figure">
               <span class="figure__value" id="savedNone"></span>
-              <span class="figure__label">contagios evitados frente a no hacer nada</span>
+              <span class="figure__label">contagios evitados en la simulación</span>
               <span class="figure__range" id="savedNoneRange"></span>
             </div>
             <div class="figure">
               <span class="figure__value" id="savedRandom"></span>
-              <span class="figure__label">contagios evitados frente a vacunar al azar</span>
+              <span class="figure__label">más que vacunar al azar con las mismas dosis</span>
               <span class="figure__range" id="savedRandomRange"></span>
-            </div>
-            <div class="figure figure--manta">
-              <span class="figure__value" id="savedManta"></span>
-              <span class="figure__label">personas de Manta (escala 1 : <span id="scale"></span>)</span>
-              <span class="figure__range" id="wasted"></span>
             </div>
           </div>
           <div class="seedstrip">
@@ -283,12 +282,17 @@
             </div>
             <div class="seedstrip__ticks" id="strip" role="img"></div>
           </div>
+          <details class="verdict__more">
+            <summary>Ver la explicación completa</summary>
+            <p class="verdict__text" id="recText"></p>
+          </details>
           <div class="mayor" id="mayor">
             <button type="button" class="btn btn--ghost" id="mayorBtn">Explícaselo al alcalde (IA)</button>
             <div class="mayor__report" id="mayorReport" hidden aria-live="polite"></div>
           </div>
           <div class="certificate" id="certificate" hidden>
-            <p class="eyebrow">Certificado de reproducibilidad</p>
+            <details class="cert__box">
+            <summary class="eyebrow">Certificado de reproducibilidad</summary>
             <dl class="cert">
               <div><dt>Configuración</dt><dd id="certHash"></dd></div>
               <div><dt>Semilla</dt><dd id="certSeed"></dd></div>
@@ -297,6 +301,7 @@
               <div><dt>Commit</dt><dd id="certCommit"></dd></div>
               <div><dt>Tiempo</dt><dd id="certTime"></dd></div>
             </dl>
+            </details>
             <button type="button" class="btn btn--ghost" id="copyLink">Copiar enlace para repetir</button>
           </div>
         </div>

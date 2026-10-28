@@ -1026,3 +1026,15 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 .verdict__decision { margin: 2px 0 12px; font-size: 18px; line-height: 1.35; color: var(--ink); }
 .verdict__decision strong { color: var(--pumpkin-2); }
 .verdict__decision + .verdict__text { font-size: .92em; color: var(--ink-soft); }
+
+/* Verdict layout: decision, one hero number, two supporting numbers, details folded away */
+.verdict .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+.verdict .figures .figure--manta { grid-column: 1 / -1; padding: 14px 0; }
+.verdict .figures .figure--manta .figure__value { font-size: 64px; }
+.verdict .figures .figure:not(.figure--manta) .figure__value { font-size: 36px; }
+.verdict__more, .cert__box { margin: 14px 0; }
+.verdict__more summary, .cert__box summary { cursor: pointer; color: var(--ink-soft); font-size: 14px; list-style: none; }
+.verdict__more summary::before, .cert__box summary::before { content: "▸ "; color: var(--pumpkin); }
+.verdict__more[open] summary::before, .cert__box[open] summary::before { content: "▾ "; }
+.verdict__more summary:hover, .cert__box summary:hover { color: var(--ink); }
+.verdict__more .verdict__text { margin-top: 8px; }
