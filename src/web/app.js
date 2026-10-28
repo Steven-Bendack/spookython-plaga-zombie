@@ -1519,7 +1519,7 @@ function updateSplitBar(day) {
   $("#splitYouB").textContent = fmt(you.bitten);
   $("#splitThemZ").textContent = fmt(them.zombies);
   $("#splitThemB").textContent = fmt(them.bitten);
-  $("#splitDay").textContent = `Día ${Math.floor(day)}`;
+  $("#splitDay").textContent = `Día ${Math.max(0, Math.floor(day))}`;  // the arrival scene runs at day -0.01
   const today = Math.floor(day);
   if (today === mapState.split.shownDay) return;
   mapState.split.shownDay = today;
