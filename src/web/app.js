@@ -798,7 +798,13 @@ function initMap() {
   });
   map.on("click", (e) => showBarrioCard(e.latlng));
   initSplit();
-  $("#daySlider").addEventListener("input", (e) => { pause(); mapState.day = +e.target.value; drawPeople(); });
+  $("#daySlider").addEventListener("input", (e) => {
+    const target = +e.target.value;  // read first: pause() redraws and resets the slider to the current day
+    pause();
+    endScene();  // dragging the timeline skips the arrival scene
+    mapState.day = target;
+    drawPeople();
+  });
 }
 
 function loadMapRun(data) {
@@ -851,6 +857,7 @@ function setRun(run, lastDay = run.lastDay, peak = run.peak) {
   mapState.run = run;
   mapState.lastDay = lastDay;
   mapState.peakZombies = peak;
+  mapState.arrived = false;  // a new run gets its arrival scene once
   $("#daySlider").max = lastDay;
   mapState.day = Math.min(mapState.day, lastDay);
 }
@@ -999,11 +1006,19 @@ function moveActor(kind, path, ms, token, follow) {
   });
 }
 
+function endScene() {
+  mapState.arrived = true;
+  mapState.actors = [];
+  mapState.inShot = false;
+  mapState.holdTicker = false;
+}
+
 async function arrival(token) {
   const run = mapState.run;
   const firsts = run.bitten.filter((p) => p[2] === 0);
   const barrios = (mapState.split ? mapState.split.data : mapState.data).map.barrios;
   if (!firsts.length || !mapState.graph) return play(true);
+  mapState.arrived = true;  // pausing and pressing play again continues the run instead of replaying the scene
   const zero = firsts[0];
   const barrio = nearestBarrio(zero[0], zero[1], barrios);
   const ticker = (text) => { $("#ticker").textContent = text; };
@@ -1068,7 +1083,7 @@ function play(resume = false) {
   mapState.playing = true;
   const token = (mapState.playToken = (mapState.playToken || 0) + 1);
   clearTimeout(mapState.idle);
-  if (!resume && mapState.day === 0 && cameraOn()) {
+  if (!resume && mapState.day === 0 && cameraOn() && !mapState.arrived) {
     $("#play").textContent = "❚❚";
     $("#play").setAttribute("aria-label", "Pausa");
     return arrival(token);
