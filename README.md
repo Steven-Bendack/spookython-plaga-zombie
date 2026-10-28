@@ -4,7 +4,7 @@
 
 > URL pública en AWS: _pendiente: la cuenta nueva sigue con la restricción del plan gratuito de AWS (ver «Estado del despliegue en AWS»)_ · App en vivo en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
 
-**Pitch (PDF, 13 diapositivas):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
+**Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
 
 ![Arquitectura](docs/arquitectura.png)
 
