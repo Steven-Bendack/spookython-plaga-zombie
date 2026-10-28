@@ -131,9 +131,8 @@ function initIntro() {
     mapState.leaflet?.setView(MANTA, HANDOFF_ZOOM, { animate: false });
     intro.classList.add("is-leaving");
     setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce ? 0 : 900);
-    showLoading("Descendiendo sobre Manta", "271 145 habitantes · 10 barrios · calles de OpenStreetMap");
+    // The city stays in view while the camera lands: no card over the map.
     await flyToCity(reduce);
-    hideLoading();
     $("#game").classList.add("is-live");
     $("#ticker").textContent = "Manta duerme tranquila… por ahora. Ajusta las condiciones y pulsa RECOMENDAR para simular el brote.";
     $("#runStatus").textContent = "Pulsa para simular el brote";
@@ -158,7 +157,7 @@ function flyToCity(reduce) {
     };
     if (reduce) { map.setView(CITY, zoom, { animate: false }); return done(); }
     map.once("moveend", done);
-    map.flyTo(CITY, zoom, { duration: 4.2, easeLinearity: 0.15 });
+    map.flyTo(CITY, zoom, { duration: 2.6, easeLinearity: 0.2 });
   });
 }
 

@@ -319,7 +319,7 @@ input[type="checkbox"] { accent-color: var(--pumpkin); width: 16px; height: 16px
 .intro.is-leaving { opacity: 0; visibility: hidden; }
 .intro__content {
   position: relative; text-align: center; padding: 24px; max-width: 640px;
-  animation: introIn 1.4s ease-out both;
+  animation: introIn .6s ease-out both;
 }
 .intro__title {
   font: 400 clamp(56px, 12vw, 118px)/0.9 var(--title); color: var(--pumpkin); margin: 10px 0 18px;

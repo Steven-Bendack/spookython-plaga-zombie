@@ -193,7 +193,7 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
   }
 
   // Turn to Manta and dive until the globe matches Leaflet at HANDOFF_ZOOM.
-  function descend(duration = 3400) {
+  function descend(duration = 2200) {
     mode = "descend";
     const from = [...rotate];
     const target = [-MANTA[0], -MANTA[1], 0];
