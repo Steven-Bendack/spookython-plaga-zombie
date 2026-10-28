@@ -114,6 +114,11 @@
 
     <aside class="bcard ui" id="barrioCard" hidden aria-live="polite"></aside>
 
+    <div class="wave" id="waveBanner" aria-live="polite" hidden>
+      <p class="wave__tag" id="waveTag"></p>
+      <p class="wave__sub" id="waveSub"></p>
+      <p class="wave__text" id="waveText"></p>
+    </div>
     <div class="loading" id="loading" hidden role="status">
       <div class="chase" aria-hidden="true">
         <div class="chase__zombie" id="spriteZombie"></div>
@@ -134,7 +139,16 @@
       <div class="drawer__body controls">
         <section class="controls__block">
           <h3 class="controls__title">Brote sorpresa</h3>
-          <p class="hint">Toca el cambio que pide el jurado y luego pulsa <strong>Recomendar</strong>.</p>
+          <div class="ask">
+            <label class="ask__label" for="askText">Cuéntale el brote al comité, con tus palabras</label>
+            <div class="ask__row">
+              <textarea id="askText" rows="2" maxlength="400" placeholder="Ej.: el doble de contagiosa, empieza en el mercado y solo hay 10 vacunas"></textarea>
+              <button type="button" class="icon-btn ask__mic" id="askMic" aria-label="Dictar con el micrófono" title="Dictar" hidden><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            </div>
+            <button type="button" class="btn btn--primary ask__go" id="askGo">Entender y recomendar</button>
+            <p class="ask__out" id="askOut" role="status" hidden></p>
+          </div>
+          <p class="hint">O toca el cambio que pide el jurado y luego pulsa <strong>Recomendar</strong>.</p>
           <div class="presets" id="presets"></div>
         </section>
 

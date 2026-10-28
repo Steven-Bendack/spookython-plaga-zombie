@@ -24,6 +24,12 @@ Diagrama de arquitectura: [PNG](docs/arquitectura.png) · [SVG](docs/arquitectur
 10. **Informe para el alcalde con IA.** El botón «Explícaselo al alcalde» pide a DeepSeek un informe de tres párrafos en lenguaje simple. La IA solo recibe números ya validados por el servidor y el nombre de la estrategia, nunca texto libre, así que no se la puede manipular desde la petición. Si no hay llave o la IA falla, el servidor arma el mismo informe con una plantilla. La llave va en la variable de entorno `DEEPSEEK_API_KEY` (en AWS, parámetro `DeepSeekApiKey`) y nunca en el código.
 11. **Certificado de reproducibilidad.** Hash de la configuración, semilla, versión del motor y commit, y un enlace "repetir" con toda la configuración en la URL.
 
+## IA en vivo (DeepSeek, con respaldo sin IA)
+
+- **Brote Sorpresa con tus palabras:** en Condiciones se escribe o se dicta el cambio («el doble de contagiosa, empieza en el mercado y solo hay 10 vacunas»). DeepSeek lo traduce a parámetros y el servidor **solo acepta claves y rangos de una lista cerrada** (`src/engine/assistant.py`): un texto malicioso no puede llegar a la simulación (hay tests con respuestas hostiles). Sin IA, un traductor de reglas entiende las frases típicas. Después el comité recalcula solo.
+- **Oleadas en el mapa:** cada semana de la corrida aparece un cartel («⚠ Oleada 2», «☠ Pico de la oleada», «↘ La ola retrocede», «✔ Manta resiste») con un titular de noticiero escrito por la IA **solo con los números de esa corrida**; sin IA, los titulares salen de una plantilla.
+- **Informe para el alcalde:** tres párrafos en lenguaje simple con los números ya validados.
+
 ## El modelo en un minuto
 
 - **Población:** Manta sintética de **10 000 agentes** (1 agente = 27,1 personas de los 271 145 del Censo 2022) con edades del censo, hogares de 3,2 personas, aulas de 30, trabajos de 10, bus, mercado central con vendedores y 10 barrios.

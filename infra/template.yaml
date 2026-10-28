@@ -136,6 +136,12 @@ Resources:
         Report:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/report }
+        Parse:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/parse }
+        News:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/news }
         StartJob:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /api/jobs }

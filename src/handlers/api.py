@@ -5,6 +5,8 @@ Routes (CloudFront forwards /api/* here):
     POST /api/simulate          tournament; chunks fan out to the worker Lambda
     POST /api/challenge         «¿Le ganas al comité?»: the player's plan vs the committee
     POST /api/report            mayor's report written by DeepSeek (template fallback)
+    POST /api/parse             a Surprise Outbreak in plain words -> whitelisted parameters
+    POST /api/news              one headline per week of a replayed run (template fallback)
     POST /api/jobs              start a big Monte Carlo job (Step Functions Distributed Map)
     GET  /api/jobs/{id}         job status and, when done, its report
 
@@ -24,6 +26,7 @@ from botocore.exceptions import ClientError
 
 from engine.api import challenge, meta, simulate
 from engine.config import SimConfig
+from engine.assistant import parse_request, wave_news
 from engine.mayor import mayor_report
 
 _lambda = boto3.client("lambda")
@@ -91,6 +94,10 @@ def handler(event, _context):
             return _ok(challenge(body, lambda_runner))
         if method == "POST" and path.endswith("/api/report"):
             return _ok(mayor_report(_body(event)))
+        if method == "POST" and path.endswith("/api/parse"):
+            return _ok(parse_request(_body(event)))
+        if method == "POST" and path.endswith("/api/news"):
+            return _ok(wave_news(_body(event)))
         if method == "POST" and path.endswith("/api/jobs"):
             return _ok(_start_job(_body(event)), status=202)
         if method == "GET" and "/api/jobs/" in path:

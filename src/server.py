@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from engine.api import challenge, meta, simulate  # noqa: E402
 from engine.config import SimConfig  # noqa: E402
 from engine.jury import red_team  # noqa: E402
+from engine.assistant import parse_request, wave_news  # noqa: E402
 from engine.mayor import mayor_report  # noqa: E402
 from engine.montecarlo import process_pool_runner  # noqa: E402
 
@@ -48,7 +49,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({"error": "La petición es demasiado grande."}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):  # bad JSON or a body that is not UTF-8
             return self._json({"error": "El cuerpo no es JSON válido."}, HTTPStatus.BAD_REQUEST)
         try:
             if self.path.startswith("/api/simulate"):
@@ -57,6 +58,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(challenge(capped(body), process_pool_runner))
             if self.path.startswith("/api/report"):
                 return self._json(mayor_report(body))
+            if self.path.startswith("/api/parse"):
+                return self._json(parse_request(body))
+            if self.path.startswith("/api/news"):
+                return self._json(wave_news(body))
             if self.path.startswith("/api/jury"):
                 cfg = SimConfig.from_dict(body)
                 points = int(min(max(body.get("points", 24), 8), 60))

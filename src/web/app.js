@@ -74,6 +74,7 @@ async function init() {
   form.addEventListener("input", () => { updateOutputs(); clearPresetSelection(); markStale(); });
   form.addEventListener("submit", (e) => { e.preventDefault(); runSimulation(); });
   $("#mayorBtn").addEventListener("click", askMayor);
+  initAsk();
   $("#dice").addEventListener("click", () => { form.seed.value = Math.floor(Math.random() * 1e6); updateOutputs(); });
   $("#copyLink").addEventListener("click", copyLink);
   $("#runJury").addEventListener("click", runJury);
@@ -295,6 +296,62 @@ function readForm() {
     out[key] = ["seed_location", "strategy"].includes(key) ? raw : Number(raw);
   }
   return out;
+}
+
+// ---------- the Surprise Outbreak in plain words (DeepSeek, with a rule-based fallback) ----------
+
+function initAsk() {
+  const text = $("#askText");
+  $("#askGo").addEventListener("click", askCommittee);
+  text.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askCommittee(); } });
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Speech) return;
+  const mic = $("#askMic");
+  mic.hidden = false;
+  mic.addEventListener("click", () => {
+    const rec = new Speech();
+    rec.lang = "es-EC";
+    rec.interimResults = false;
+    mic.classList.add("is-listening");
+    rec.onresult = (e) => { text.value = e.results[0][0].transcript; askCommittee(); };
+    rec.onend = () => mic.classList.remove("is-listening");
+    rec.start();
+  });
+}
+
+async function askCommittee() {
+  const text = $("#askText").value.trim();
+  const out = $("#askOut");
+  if (!text) { $("#askText").focus(); return; }
+  const btn = $("#askGo");
+  btn.disabled = true;
+  btn.textContent = "Entendiendo…";
+  out.hidden = false;
+  out.className = "ask__out";
+  out.textContent = "El comité está leyendo tu pedido…";
+  try {
+    const res = await getJSON(`${API}/parse`, { text, current: readForm() });
+    if (!Object.keys(res.changes).length) {
+      out.classList.add("is-miss");
+      out.textContent = "No reconocí ningún cambio. Prueba: «el doble de contagiosa» o «empieza en Tarqui».";
+      return;
+    }
+    setForm(res.changes);
+    updateOutputs();
+    clearPresetSelection();
+    out.textContent = "";
+    const who = document.createElement("strong");
+    who.textContent = res.source === "ai" ? "🤖 La IA entendió: " : "Entendí: ";
+    out.append(who, res.summary, ". Simulando…");
+    if (isNarrow()) closePanel("controls");
+    await runSimulation();
+  } catch (err) {
+    out.classList.add("is-miss");
+    out.textContent = `No pude entenderlo: ${err.message}.`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Entender y recomendar";
+  }
 }
 
 function setForm(values) {
@@ -897,7 +954,62 @@ function showBarrioLabels(barrios) {
 function prepareRun() {
   const data = mapState.data;
   if (!data) return;
-  setRun(makeRun(data.map[mapState.policy], data, mapState.policy !== "none"));
+  const run = makeRun(data.map[mapState.policy], data, mapState.policy !== "none");
+  run.waves = wavesOf(run, data);
+  loadNews(run, mapState.policy === "strategy" ? data.candidates[0].name : mapState.policy);
+  setRun(run);
+}
+
+// ---------- waves: a TV-style banner each week of the replayed run ----------
+
+// One entry per week, from the run's own day-by-day counts [S, E, I, R, V].
+function wavesOf(run, data) {
+  const counts = run.counts || [];
+  if (!counts.length) return [];
+  const n = data.config.population;
+  const scale = data.manta_scale;
+  const weeks = [];
+  for (let w = 1; 7 * (w - 1) < run.lastDay; w += 1) {
+    const d = Math.min(7 * w, counts.length - 1);
+    const [S, , I, , V] = counts[d];
+    const barrios = run.events
+      .filter((e) => e.day > 7 * (w - 1) && e.day <= 7 * w && e.bubble?.title?.startsWith("Llega a"))
+      .map((e) => e.bubble.title.replace(/^Llega a /, ""));
+    weeks.push({ week: w, zombies: Math.round(I * scale), bitten: Math.round((n - S - V) * scale),
+      vaccinated: Math.round(V * scale), barrios });
+  }
+  const peak = weeks.reduce((a, b) => (b.zombies > a.zombies ? b : a), weeks[0]).week;
+  weeks.forEach((w) => {
+    w.phase = w.zombies === 0 && w.week > 1 ? "calm" : w.week === peak ? "peak" : w.week > peak ? "down" : "up";
+  });
+  return weeks;
+}
+
+// Headlines from the AI, once per run; the template answers if it fails (server side).
+function loadNews(run, strategy) {
+  if (!run.waves.length) return;
+  const weeks = run.waves.map(({ week, zombies, bitten, vaccinated, barrios }) => ({ week, zombies, bitten, vaccinated, barrios }));
+  getJSON(`${API}/news`, { weeks, strategy })
+    .then((res) => { run.news = res.news; run.newsSource = res.source; })
+    .catch(() => {});
+}
+
+function showWave(run, week) {
+  const w = run.waves?.[week - 1];
+  const line = run.news?.[week - 1];
+  if (!w || !line) return;
+  const tag = { up: `⚠ Oleada ${week}`, peak: "☠ Pico de la oleada", down: "↘ La ola retrocede", calm: "✔ Manta resiste" }[w.phase];
+  const banner = $("#waveBanner");
+  banner.className = `wave is-${w.phase}`;
+  $("#waveTag").textContent = tag;
+  $("#waveSub").textContent = `Semana ${week} · ${fmt(w.zombies)} zombis en Manta`;
+  $("#waveText").textContent = line;
+  banner.hidden = false;
+  void banner.offsetWidth;
+  banner.classList.add("is-on");
+  clearTimeout(mapState.waveTimer);
+  mapState.waveTimer = setTimeout(() => banner.classList.remove("is-on"), 2600);
+  if (w.phase === "peak") sound.groan();
 }
 
 // A replayed run ready to draw: points in world coordinates plus its headlines.
@@ -1345,6 +1457,13 @@ function drawPeople() {
   // A bite sound for every wave of new cases while the run plays (rate-limited in sound.js).
   if (mapState.playing && bittenSoFar > (mapState.heardBitten ?? Infinity)) sound.infect((bittenSoFar - mapState.heardBitten) / 30);
   mapState.heardBitten = bittenSoFar;
+  // A new week while the run plays: its wave banner.
+  const week = Math.floor(day / 7) + 1;
+  if (mapState.playing && !split && !mapState.holdTicker && day >= 1 && week !== mapState.shownWeek) {
+    mapState.shownWeek = week;
+    showWave(run, week);
+  }
+  if (day < 1) mapState.shownWeek = 0;
   const ev = split || mapState.holdTicker ? null : run.events.filter((e) => e.day <= day).at(-1);
   const ticker = $("#ticker");
   if (ev && ticker.textContent !== ev.text) {

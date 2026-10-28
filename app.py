@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from engine.api import challenge, meta, simulate  # noqa: E402
+from engine.assistant import parse_request, wave_news  # noqa: E402
 from engine.mayor import mayor_report  # noqa: E402
 
 MAX_RUNS = 40
@@ -33,6 +34,10 @@ def app(environ, start_response):
             return _json(start_response, challenge(body))
         if method == "POST" and path.endswith("/api/report"):
             return _json(start_response, mayor_report(_body(environ)))
+        if method == "POST" and path.endswith("/api/parse"):
+            return _json(start_response, parse_request(_body(environ)))
+        if method == "POST" and path.endswith("/api/news"):
+            return _json(start_response, wave_news(_body(environ)))
         if method == "POST" and path.endswith("/api/jury"):
             return _json(start_response, {"error": "El ataque en vivo corre en la versión de AWS o en local; "
                                                    "aquí se muestra el último ataque guardado"}, "503 Service Unavailable")
