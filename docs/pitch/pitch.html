@@ -132,7 +132,6 @@
       <tr><td>La mitad de las vacunas</td><td><strong>Más conectados</strong></td><td class="num">1 364</td><td class="num">759</td><td class="num">99 %</td></tr>
       <tr><td>Empieza en el mercado</td><td><strong>Anillo + conectados</strong></td><td class="num">4 729</td><td class="num">3 438</td><td class="num">99 %</td></tr>
       <tr><td>Vacuna que cubre a medias (50 %)</td><td><strong>Más conectados</strong></td><td class="num">1 453</td><td class="num">781</td><td class="num">99 %</td></tr>
-      <tr><td><span style="color:var(--blood)">Los 4 a la vez</span> <span class="soft" style="font-size:18px">(semilla 5, 40 corridas)</span></td><td><strong>Conocido + cerrar el mercado</strong></td><td class="num">161 → 227</td><td class="num">12</td><td class="num">68 %</td></tr>
     </tbody>
   </table>
   <p class="soft" style="margin-top:24px">Un toque en la interfaz y la respuesta aparece al instante (mapa de decisión precalculado); luego se confirma en vivo con la semilla del jurado.</p>
@@ -173,41 +172,6 @@
   <div class="foot"><span>1 unidad = 1 dosis · mercado 40/día · colegios 80/día (supuestos)</span><span>8</span></div>
 </section>
 
-<!-- 8a -->
-<section class="slide">
-  <p class="eyebrow">El peor Brote Sorpresa</p>
-  <h2>Cuando vacunar <span class="red">no basta</span>, el comité lo dice</h2>
-  <div class="grid2" style="grid-template-columns:1.15fr 0.85fr">
-    <div>
-      <p>Doble de contagiosa, mitad de vacunas, empieza en el mercado y vacuna al 50 %, todo junto: ninguna vacuna separa mucho del azar (gana en 68 % de las semillas, 12 contagios más).</p>
-      <p>En vez de esconderlo, el comité <strong>prueba cierres por su cuenta</strong>, con el <strong>mismo presupuesto</strong> que las vacunas (nada sale gratis), y lo pone en el veredicto:</p>
-      <div class="big">161 → 227</div>
-      <p class="label">contagios evitados al sumar el cierre del mercado ~27 días (+41 %), con las mismas 1 430 unidades</p>
-    </div>
-    <img class="shot" src="img/verdict_worst.png" alt="Veredicto con recomendación de cierres" style="max-height:700px;width:auto;justify-self:center">
-  </div>
-  <div class="foot"><span>Regla: si gana a Azar en &lt; 90 % de las semillas o evita &lt; 100 más, se prueban cierres</span><span>9</span></div>
-</section>
-
-<!-- 8b -->
-<section class="slide">
-  <p class="eyebrow">Producto</p>
-  <h2>¿Le ganas <em>al comité</em>?</h2>
-  <div class="grid2" style="grid-template-columns:0.8fr 1.2fr">
-    <div>
-      <p>Cualquiera puede armar su propio plan: elige hasta 3 grupos para vacunar primero y juega contra el comité <strong>con las mismas vacunas y la misma suerte</strong>.</p>
-      <ul>
-        <li>Pantalla dividida: tu plan y el del comité sobre el mismo mapa de Manta, día a día.</li>
-        <li>Marcador corrida por corrida: en cuántas semillas ganas.</li>
-        <li>La plaga llega por el <strong>puerto</strong> y recorre las <strong>calles reales</strong> (OpenStreetMap) hasta el paciente cero.</li>
-      </ul>
-      <p class="soft">Así el alcalde entiende en un minuto por qué la intuición pierde contra el comité.</p>
-    </div>
-    <img class="shot" src="img/duel.png" alt="Duelo contra el comité">
-  </div>
-  <div class="foot"><span>Mismas semillas = comparación justa</span><span>10</span></div>
-</section>
-
 <!-- 8 -->
 <section class="slide">
   <p class="eyebrow">Ficción frente a realidad</p>
@@ -223,7 +187,7 @@
     </tbody>
   </table>
   <p class="soft" style="margin-top:24px">Zombis lentos: el anillo los encierra. Zombis rápidos: con 20 vacunas al día no hay estrategia que salve Manta; hacen falta otras medidas. Cada plaga pide una respuesta distinta.</p>
-  <div class="foot"><span>Alemi, Bierbaum, Myers y Sethna, Physical Review E (2015): α = 0,8 ajustado a películas</span><span>11</span></div>
+  <div class="foot"><span>Alemi, Bierbaum, Myers y Sethna, Physical Review E (2015): α = 0,8 ajustado a películas</span><span>9</span></div>
 </section>
 
 <!-- 9 -->
@@ -236,13 +200,12 @@
       <ul>
         <li>CloudFront + S3 privado + HTTP API con límites + Lambda que reparte el trabajo en paralelo; Step Functions Distributed Map para miles de corridas.</li>
         <li>Motor en Python puro: misma semilla ⇒ mismo resultado en local y en AWS (lo prueba un test).</li>
-        <li>71 pruebas: reproducibilidad, conservación, nunca vacunar a un detectado, mismas dosis para Azar, calibración ±10 %. Corren en GitHub Actions en cada cambio y solo se publica si pasan.</li>
-        <li>Informe para el alcalde en lenguaje simple con IA: solo recibe números ya validados, y si la IA falla responde una plantilla.</li>
+        <li>36 pruebas: reproducibilidad, conservación, nunca vacunar a un detectado, mismas dosis para Azar, calibración ±10 %.</li>
         <li>Costo: ≈ USD 0,003 por recomendación; ≈ USD 0,25 al mes con la capa gratuita.</li>
       </ul>
     </div>
   </div>
-  <div class="foot"><span>Certificado: hash + semilla + commit en cada resultado</span><span>12</span></div>
+  <div class="foot"><span>Certificado: hash + semilla + commit en cada resultado</span><span>10</span></div>
 </section>
 
 <!-- 10 -->
@@ -262,14 +225,13 @@
     <div class="card">
       <p style="font-weight:600">Siguiente paso</p>
       <ul class="soft">
-        <li>Dengue en Manabí con modelo de mosquito y brigadas de fumigación.</li>
-        <li>Movilidad real (datos de buses) en lugar de contactos sintéticos.</li>
-        <li>Hospitales y camas: decidir también cuándo el sistema se satura.</li>
+        <li>Dengue en Manabí con modelo de mosquito.</li>
+        <li>Informe para el alcalde generado en lenguaje simple.</li>
       </ul>
     </div>
   </div>
   <p style="font-size:36px;margin-top:50px">Que el jurado elija la semilla. <span style="color:var(--ecto)">El comité responde.</span></p>
-  <div class="foot"><span><img src="../../src/web/assets/mineral-halloween.svg" alt="">Mineral Studio</span><span>13</span></div>
+  <div class="foot"><span><img src="../../src/web/assets/mineral-halloween.svg" alt="">Mineral Studio</span><span>11</span></div>
 </section>
 
 </body>
