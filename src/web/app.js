@@ -147,6 +147,28 @@ function initIntro() {
   $("#enterSound").focus();
 }
 
+// Warm the browser cache with the satellite tiles of the current view (this zoom and the next),
+// so switching to Satélite shows the city at once instead of grey squares. At most ~80 small images.
+function prefetchSatellite(map) {
+  const url = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+  const z0 = Math.round(map.getZoom());
+  let budget = 80;
+  for (const z of [z0, z0 + 1]) {
+    const b = map.getPixelBounds();
+    const k = 2 ** (z - map.getZoom());
+    const [x0, y0] = [Math.floor((b.min.x * k) / 256), Math.floor((b.min.y * k) / 256)];
+    const [x1, y1] = [Math.floor((b.max.x * k) / 256), Math.floor((b.max.y * k) / 256)];
+    for (let x = x0; x <= x1; x += 1) {
+      for (let y = y0; y <= y1; y += 1) {
+        if (budget-- <= 0) return;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = url(z, x, y);
+      }
+    }
+  }
+}
+
 // Once landed, the map stays on Manta and its surroundings (the sea, the airport, the road
 // to Portoviejo): zooming out further only showed half-loaded tiles of the whole continent.
 const MANTA_BOUNDS = [[-1.30, -81.10], [-0.65, -80.30]];
@@ -166,6 +188,7 @@ function flyToCity(reduce) {
       map.removeLayer(mapState.pin);
       mapState.tiles.dark.addLayer(mapState.darkLabels);
       lockToManta(map);
+      setTimeout(() => prefetchSatellite(map), 2500);  // after landing, so it never competes with the intro
       resolve();
     };
     if (reduce) { map.setView(CITY, zoom, { animate: false }); return done(); }

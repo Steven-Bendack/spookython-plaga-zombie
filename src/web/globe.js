@@ -36,8 +36,10 @@ export function createGlobe(canvas, { reduce = false, worldUrl }) {
   let last = performance.now();
   const born = performance.now();
 
-  const restScale = () => (w > 900 ? Math.min(w * 0.3, h * 0.4) : Math.min(w * 0.46, h * 0.3));
-  const restShift = () => (w > 900 ? [w * 0.2, 0] : [0, h * 0.2]);
+  // Phones: smaller and lower, so the planet rises below the title and the button instead of under them.
+  const restScale = () => (w > 900 ? Math.min(w * 0.3, h * 0.4) : Math.min(w * 0.44, h * 0.24));
+  // Short phones (iPhone SE) have no room below the text: the planet sinks half off-screen behind it.
+  const restShift = () => (w > 900 ? [w * 0.2, 0] : [0, h < 700 ? h * 0.42 : h * 0.3]);
 
   function resize() {
     // Capped at 1.5: on phones (ratio ~2.6) the full resolution cost a third of the frame rate
