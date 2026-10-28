@@ -1123,3 +1123,12 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
 .wave.is-calm .wave__tag { color: var(--ecto, #a8d672); text-shadow: 0 0 14px rgba(168, 214, 114, .5); }
 @media (max-width: 900px) { .wave__tag { font-size: 24px; } .wave__text { font-size: 14px; } .wave { top: calc(var(--top-h) + var(--gap) * 2); } }
 body.calm .wave { display: none; }
+
+/* Evidence: the three facts first, the detail below */
+.evcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+.evcard { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line-hi); border-radius: 6px; background: rgba(4, 12, 19, .55); }
+.evcard--hot { border-color: rgba(255, 106, 31, .55); background: linear-gradient(135deg, rgba(255, 106, 31, .14), rgba(255, 106, 31, .03)); }
+.evcard__v { font: 800 30px/1 var(--display); color: var(--ink); }
+.evcard--hot .evcard__v { color: var(--pumpkin); text-shadow: 0 0 16px rgba(255, 106, 31, .4); }
+.evcard__l { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+@media (max-width: 620px) { .evcards { grid-template-columns: 1fr; } .evcard { grid-template-columns: auto 1fr; align-items: center; gap: 12px; } .evcard__v { font-size: 24px; } }
