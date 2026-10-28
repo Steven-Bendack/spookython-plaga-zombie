@@ -4,7 +4,7 @@
 
 > **URL pública en AWS: https://darwqtaqrduba.cloudfront.net** (us-east-2, Ohio) · Copia en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición y sin ataque en vivo del Modo Jurado; en AWS, 100 corridas en ≈ 8 s y el Modo Jurado corre en Step Functions)
 
-**Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
+**Hoja de defensa ante el jurado (1 página):** [docs/defensa-jurado.pdf](docs/defensa-jurado.pdf) · **Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
 
 ![Arquitectura](docs/arquitectura.png)
 
@@ -135,6 +135,8 @@ Antes de desplegar, revisar en **Service Quotas** la concurrencia de Lambda de l
 - **Concurrencia de Lambda = 10** en una cuenta nueva: por eso `MaxFanout=8` y `MapMaxConcurrency=8` (quedan 2 para la API y el agregador). Ya se pidió el aumento a 1 000.
 - **Despliegue automático:** cada push a `main` corre los tests en GitHub Actions y, si pasan, despliega a AWS (y a la copia de Vercel) y comprueba que la URL pública sirva ese commit.
 - **Mínimo privilegio en el despliegue:** el usuario `github-deploy` solo puede actualizar el stack `plaga-zombie`, subir a sus dos buckets e invalidar su CloudFront; CloudFormation crea los recursos con su propio rol (`plaga-zombie-cfn-deploy`), que nadie más puede usar. La llave vive cifrada en los secretos de GitHub, nunca en el código. (La cuenta no permite OIDC, que habría evitado la llave.)
+
+- **Monitoreo:** panel de CloudWatch `plaga-zombie` (invocaciones, errores, throttles y duración de las 4 Lambdas, y trabajos de Step Functions) y 3 alarmas con aviso por SNS: errores de la API, throttles de los trabajadores y trabajos fallidos. Para recibir correos se despliega con `AlarmEmail=<correo>`.
 
 Medido en la URL pública: «Recomendar» con 100 corridas ≈ 8 s; Modo Jurado en vivo, 24 brotes × 12 corridas en Step Functions ≈ 2 min; la semilla 2026 con 40 corridas da el hash `00e686fa2755` y 3 133,75 salvados, igual que en local y en Vercel.
 

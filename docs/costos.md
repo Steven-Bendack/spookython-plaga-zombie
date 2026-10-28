@@ -45,6 +45,7 @@ Escenario de uso del evento: 500 "Recomendar" + 10 trabajos de Modo Jurado + 5 m
 
 Protecciones contra un gasto inesperado:
 - HTTP API con **throttling** (5 peticiones/s, ráfaga de 10).
+- **Monitoreo con CloudWatch** (panel `plaga-zombie` y alarmas de errores de la API, throttles de los trabajadores y trabajos fallidos, con aviso por SNS). Costo: USD 0, porque la capa gratuita cubre 3 paneles y 10 alarmas al mes.
 - Límites en el motor: máximo 200 corridas por petición pública, 40 000 agentes y 365 días (`SimConfig.validated`).
 - Fan-out acotado (`MaxFanout` = 10) y `MaxConcurrency` del Distributed Map = 40; en una cuenta nueva con concurrencia de Lambda = 10 se despliega con 8 y 8.
 - Resultados en S3 con expiración a los 30 días.
@@ -58,5 +59,6 @@ Leído con Cost Explorer (`aws ce get-cost-and-usage`, costo sin combinar, 1 al 
 |---|---|---|---|
 | 2026-10-27 | 144501241198 (primera cuenta) | Cost Explorer | **USD 0,00** |
 | 2026-10-27 | 509306734195 (cuenta del despliegue) | Cost Explorer | **USD 0,00** |
+| 2026-10-28 | 509306734195 (cuenta del despliegue) | Cost Explorer, 1 al 28 de octubre, por servicio | **USD 0,00** (todo dentro de la capa gratuita; Cost Explorer tarda ~24 h en mostrar el uso del día) |
 
-Créditos disponibles en la cuenta del despliegue: **USD 120** (`aws freetier get-account-plan-state`). Hasta el 27 de octubre el gasto fue cero porque el despliegue se hizo esa noche (stack `plaga-zombie`, us-east-2); el uso del evento entra en la capa gratuita y en los créditos. Se vuelve a leer en Cost Explorer antes del pitch.
+Créditos disponibles en la cuenta del despliegue: **USD 140** al 28 de octubre (eran USD 120 el 27) (`aws freetier get-account-plan-state`). Hasta el 27 de octubre el gasto fue cero porque el despliegue se hizo esa noche (stack `plaga-zombie`, us-east-2); el uso del evento entra en la capa gratuita y en los créditos. Se vuelve a leer en Cost Explorer antes del pitch.
