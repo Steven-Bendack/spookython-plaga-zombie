@@ -68,7 +68,7 @@ Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 
 | 7 | Desplegado en AWS | ✅ | **https://darwqtaqrduba.cloudfront.net** · stack `plaga-zombie` en us-east-2 (CloudFront + S3, HTTP API, 4 Lambdas, Step Functions Distributed Map). Se despliega solo desde GitHub Actions cuando pasan los tests |
 | 8 | README con supuestos y fuentes | ✅ | Este README y [docs/supuestos.md](docs/supuestos.md) |
 
-Regla de la cuenta: **AWS Budget con alerta creado** (presupuesto «plaga zombie» de 10 US$ al mes, captura abajo).
+Regla de la cuenta: **AWS Budget con alerta creado** (presupuesto «plaga-zombie» de 10 US$ al mes en la cuenta del despliegue, captura abajo).
 
 ## Cómo correrlo en local
 
@@ -142,7 +142,7 @@ Medido en la URL pública: «Recomendar» con 100 corridas ≈ 8 s; Modo Jurado 
 
 ![AWS Budget](docs/budget.png)
 
-Presupuesto de costos «plaga zombie»: 10 US$ al mes desde el 1 de octubre de 2026, con alerta por correo.
+Cuenta del despliegue (509306734195, «Sky is the Limit»): Budget de costos **«plaga-zombie» de 10 US$ al mes** con tres alertas por correo (gasto real al 85 % y al 100 %, y pronóstico al 100 %), más el **límite de gasto duro de 20 US$** de la cuenta, que pausa los recursos si se alcanza.
 
 ## Costos
 

@@ -48,7 +48,7 @@ Protecciones contra un gasto inesperado:
 - Límites en el motor: máximo 200 corridas por petición pública, 40 000 agentes y 365 días (`SimConfig.validated`).
 - Fan-out acotado (`MaxFanout` = 10) y `MaxConcurrency` del Distributed Map = 40; en una cuenta nueva con concurrencia de Lambda = 10 se despliega con 8 y 8.
 - Resultados en S3 con expiración a los 30 días.
-- **AWS Budget con alerta** de 10 US$ al mes (captura en `docs/budget.png`).
+- **AWS Budget con alerta** de 10 US$ al mes (85 % y 100 % del gasto real, 100 % del pronóstico) y **límite de gasto duro de 20 US$** de la cuenta (captura en `docs/budget.png`).
 
 ## Gasto real del evento
 
