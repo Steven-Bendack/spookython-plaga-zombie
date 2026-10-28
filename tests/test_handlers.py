@@ -49,3 +49,38 @@ def test_bad_json_is_a_400(api):
 
 def test_unknown_route_is_a_404(api):
     assert api.handler(_event("GET", "/api/nope"), None)["statusCode"] == 404
+
+
+class _FakeLambda:
+    """Throttles the first `fail` invokes, then echoes the task back."""
+
+    def __init__(self, fail):
+        self.fail, self.calls = fail, 0
+
+    def invoke(self, FunctionName, Payload):
+        import io
+        from botocore.exceptions import ClientError
+        self.calls += 1
+        if self.calls <= self.fail:
+            raise ClientError({"Error": {"Code": "TooManyRequestsException"}}, "Invoke")
+        return {"Payload": io.BytesIO(Payload)}
+
+
+def test_throttled_workers_are_retried(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    from handlers import api
+    fake = _FakeLambda(fail=2)
+    monkeypatch.setattr(api, "_lambda", fake)
+    monkeypatch.setattr(api.time, "sleep", lambda _s: None)
+    assert api.lambda_runner([{"chunk": 1}]) == [{"chunk": 1}]
+    assert fake.calls == 3
+
+
+def test_full_concurrency_is_a_clear_503(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    from handlers import api
+    monkeypatch.setattr(api, "_lambda", _FakeLambda(fail=10**6))
+    monkeypatch.setattr(api, "RETRY_DEADLINE", 0.0)
+    res = api.handler(_event("POST", "/api/simulate", {"runs": 2, "population": 2000, "days": 20}), None)
+    assert res["statusCode"] == 503
+    assert "mucha gente" in json.loads(res["body"])["error"]
