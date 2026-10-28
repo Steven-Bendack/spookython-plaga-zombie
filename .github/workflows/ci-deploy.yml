@@ -71,3 +71,54 @@ jobs:
             | python3 -c "import json,sys; print(json.load(sys.stdin)['certificate']['commit'])")
           echo "live commit: $live"
           test "$live" = "${GITHUB_SHA::12}"
+
+  # AWS (the official deployment): same tests gate it. The deploy user can only
+  # update this stack, its two buckets and its CloudFront (least privilege);
+  # CloudFormation itself runs with the plaga-zombie-cfn-deploy role.
+  deploy-aws:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: aws
+      url: https://darwqtaqrduba.cloudfront.net
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-2
+      STACK: plaga-zombie
+      CFN_ROLE: arn:aws:iam::509306734195:role/plaga-zombie-cfn-deploy
+      ARTIFACTS: aws-sam-cli-managed-default-samclisourcebucket-ol2nsrrrv51t
+      WEB_BUCKET: plaga-zombie-webbucket-h262ibaw54zz
+      DISTRIBUTION: EPB5V1I9V97MN
+      URL: https://darwqtaqrduba.cloudfront.net
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - name: Build (numpy layer for Lambda + SAM)
+        run: |
+          python infra/build_layer.py
+          echo "${GITHUB_SHA::12}" > src/engine/COMMIT
+          sam build -t infra/template.yaml --build-dir build/sam
+      - name: Deploy the stack
+        run: |
+          sam deploy --template-file build/sam/template.yaml --stack-name "$STACK" \
+            --s3-bucket "$ARTIFACTS" --role-arn "$CFN_ROLE" --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset --no-fail-on-empty-changeset \
+            --parameter-overrides MaxFanout=8 MapMaxConcurrency=8
+      - name: Upload the web
+        run: |
+          aws s3 sync src/web "s3://$WEB_BUCKET" --delete --only-show-errors
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "/*" >/dev/null
+      - name: AWS serves this commit
+        run: |
+          live=$(curl -fsS -X POST "$URL/api/simulate" -H 'content-type: application/json' \
+            -d '{"seed":2026,"runs":2}' | python3 -c "import json,sys; print(json.load(sys.stdin)['certificate']['commit'])")
+          echo "live commit: $live"
+          test "$live" = "${GITHUB_SHA::12}"

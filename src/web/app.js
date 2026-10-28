@@ -1658,12 +1658,32 @@ function renderDecisionMap(map) {
   $("#dmap").innerHTML = head + cells;
 }
 
+// Local server: /api/jury answers at once. AWS: the attack runs as a Step Functions
+// Distributed Map job, so start it and poll until the report is ready.
+async function attack(body) {
+  const res = await fetch(`${API}/jury`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (res.status !== 404) {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
+    return data;
+  }
+  const { job_id: id } = await getJSON(`${API}/jobs`, { ...body, kind: "jury" });
+  const started = performance.now();
+  for (;;) {
+    await wait(4000);
+    const job = await getJSON(`${API}/jobs/${id}`);
+    if (job.status === "SUCCEEDED") return job.report;
+    if (job.status !== "RUNNING") throw new Error(`el trabajo terminó en ${job.status}`);
+    $("#juryHint").textContent = `Atacando en AWS (Step Functions, en paralelo)… ${Math.round((performance.now() - started) / 1000)} s`;
+  }
+}
+
 async function runJury() {
   const btn = $("#runJury");
   btn.disabled = true;
   $("#juryHint").textContent = "Atacando… prueba unos 30 brotes distintos.";
   try {
-    const jury = await getJSON(`${API}/jury`, { ...readForm(), points: 24 });
+    const jury = await attack({ ...readForm(), points: 24 });
     state.jury = jury;
     renderJury(jury);
     $("#juryHint").textContent = `Listo: ${jury.points.length} brotes probados con ${jury.runs_per_point} corridas cada uno.`;

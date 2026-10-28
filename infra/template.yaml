@@ -148,8 +148,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handlers.jobs.plan
-      MemorySize: 1024
-      Timeout: 60
+      MemorySize: 3008   # it calibrates every attacked outbreak: CPU scales with memory
+      Timeout: 300
       Policies:
         - S3CrudPolicy: { BucketName: !Ref ResultsBucket }
 

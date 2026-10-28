@@ -8,7 +8,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STACK="${STACK:-plaga-zombie}"
-REGION="us-east-1"
+REGION="${REGION:-us-east-2}"  # new free-plan accounts only allow some regions
 cd "$ROOT"
 
 echo "== Account"
@@ -23,7 +23,8 @@ sam build -t infra/template.yaml --build-dir build/sam
 
 echo "== Deploy"
 sam deploy --template-file build/sam/template.yaml --stack-name "$STACK" --region "$REGION" \
-  --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset
+  --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset \
+  --parameter-overrides MaxFanout="${MAX_FANOUT:-8}" MapMaxConcurrency="${MAP_CONCURRENCY:-8}"
 
 out() {
   aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \

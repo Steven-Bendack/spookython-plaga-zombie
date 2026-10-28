@@ -1,6 +1,6 @@
 # Declaración de costos
 
-Región: **us-east-1 (N. Virginia)**. Precios públicos de AWS para x86 (a confirmar en [calculator.aws](https://calculator.aws) el día del despliegue; aquí se deja el cálculo visible).
+Región: **us-east-2 (Ohio)**; los precios usados abajo son los mismos que en us-east-1. Precios públicos de AWS para x86 (a confirmar en [calculator.aws](https://calculator.aws) el día del despliegue; aquí se deja el cálculo visible).
 
 | Servicio | Precio usado | Capa gratuita mensual |
 |---|---|---|
@@ -59,4 +59,4 @@ Leído con Cost Explorer (`aws ce get-cost-and-usage`, costo sin combinar, 1 al 
 | 2026-10-27 | 144501241198 (primera cuenta) | Cost Explorer | **USD 0,00** |
 | 2026-10-27 | 509306734195 (cuenta del despliegue) | Cost Explorer | **USD 0,00** |
 
-Créditos disponibles en la cuenta del despliegue: **USD 120** (`aws freetier get-account-plan-state`). El gasto es cero porque AWS todavía no permite crear los recursos (ver el README, «Estado del despliegue en AWS»); la vista previa del evento corre en Vercel, plan gratuito.
+Créditos disponibles en la cuenta del despliegue: **USD 120** (`aws freetier get-account-plan-state`). Hasta el 27 de octubre el gasto fue cero porque el despliegue se hizo esa noche (stack `plaga-zombie`, us-east-2); el uso del evento entra en la capa gratuita y en los créditos. Se vuelve a leer en Cost Explorer antes del pitch.

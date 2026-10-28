@@ -2,7 +2,7 @@
 
 **SpookyThon 2026 · Track B.** Herramienta del Comité de Contención de Manta: simula día a día cómo se propaga una plaga en una red de contactos de la ciudad, reparte vacunas escasas con distintas estrategias y demuestra con cientos de corridas pareadas cuánta gente salva cada una frente a **no hacer nada** y frente a **vacunar al azar con las mismas dosis**.
 
-> URL pública en AWS: _pendiente: la cuenta nueva sigue con la restricción del plan gratuito de AWS (ver «Estado del despliegue en AWS»)_ · App en vivo en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición; el ataque en vivo del Modo Jurado solo corre en AWS o en local)
+> **URL pública en AWS: https://darwqtaqrduba.cloudfront.net** (us-east-2, Ohio) · Copia en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición y sin ataque en vivo del Modo Jurado; en AWS, 100 corridas en ≈ 8 s y el Modo Jurado corre en Step Functions)
 
 **Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
 
@@ -65,7 +65,7 @@ Presets de Brote Sorpresa (un toque en la interfaz): el doble de contagiosa (R0 
 | 4 | Muchas corridas, promedios y rangos | ✅ | 100 corridas por política (40 en Vercel); promedio, rango del 90 % e IC 95 % en la interfaz |
 | 5 | Interfaz para cambiar contagio, vacunas e inicio | ✅ | Controles R0, vacunas por día y "Dónde empieza", más los presets de Brote Sorpresa |
 | 6 | Reproducible | ✅ | Misma config + semilla ⇒ mismo JSON byte a byte (prueba) y mismo hash en local y en Vercel |
-| 7 | Desplegado en AWS | ⏳ **Bloqueado por AWS** | `infra/template.yaml` y `scripts/deploy_aws.sh` listos (`sam validate --lint` y `sam build` pasan). La cuenta tiene Budget y plan de pago, pero AWS mantiene la política `p-8jgrv0xy` del plan gratuito, que niega Lambda, CloudFormation, S3 y API Gateway. Detalle abajo |
+| 7 | Desplegado en AWS | ✅ | **https://darwqtaqrduba.cloudfront.net** · stack `plaga-zombie` en us-east-2 (CloudFront + S3, HTTP API, 4 Lambdas, Step Functions Distributed Map). Se despliega solo desde GitHub Actions cuando pasan los tests |
 | 8 | README con supuestos y fuentes | ✅ | Este README y [docs/supuestos.md](docs/supuestos.md) |
 
 Regla de la cuenta: **AWS Budget con alerta creado** (presupuesto «plaga zombie» de 10 US$ al mes, captura abajo).
@@ -113,7 +113,7 @@ python -m pytest
 
 ## Cómo desplegarlo en AWS
 
-Requisitos: cuenta de AWS **con AWS Budget y alerta** (ver abajo), AWS CLI con un perfil propio (`aws configure sso`; nunca llaves en el repositorio) y AWS SAM CLI. Región: **us-east-1**.
+Requisitos: cuenta de AWS **con AWS Budget y alerta** (ver abajo), AWS CLI con un perfil propio (`aws configure sso`; nunca llaves en el repositorio) y AWS SAM CLI. Región: **us-east-2** (ver abajo por qué).
 
 ```bash
 AWS_PROFILE=<tu-perfil> bash scripts/deploy_aws.sh
@@ -129,18 +129,14 @@ aws budgets create-budget --account-id <ID_DE_CUENTA>   --budget '{"BudgetName":
 
 Antes de desplegar, revisar en **Service Quotas** la concurrencia de Lambda de la cuenta: en cuentas nuevas es **10**. Con ese valor hay que desplegar con `--parameter-overrides MaxFanout=8 MapMaxConcurrency=8` (quedan 2 lugares para la API y el agregador) y pedir el aumento a 1 000.
 
-### Estado del despliegue en AWS (27 de octubre, noche)
+### Por qué us-east-2 y cómo se despliega solo
 
-Lo que pasó, con evidencia de la CLI:
+- **Región us-east-2 (Ohio).** Las cuentas creadas con el registro nuevo de AWS quedan dentro de una organización que administra AWS, con políticas de control (SCP) que en nuestra cuenta niegan Lambda, CloudFormation y API Gateway en us-east-1, pero los permiten en us-east-2. Lo comprobamos servicio por servicio con la CLI y desplegamos ahí.
+- **Concurrencia de Lambda = 10** en una cuenta nueva: por eso `MaxFanout=8` y `MapMaxConcurrency=8` (quedan 2 para la API y el agregador). Ya se pidió el aumento a 1 000.
+- **Despliegue automático:** cada push a `main` corre los tests en GitHub Actions y, si pasan, despliega a AWS (y a la copia de Vercel) y comprueba que la URL pública sirva ese commit.
+- **Mínimo privilegio en el despliegue:** el usuario `github-deploy` solo puede actualizar el stack `plaga-zombie`, subir a sus dos buckets e invalidar su CloudFront; CloudFormation crea los recursos con su propio rol (`plaga-zombie-cfn-deploy`), que nadie más puede usar. La llave vive cifrada en los secretos de GitHub, nunca en el código. (La cuenta no permite OIDC, que habría evitado la llave.)
 
-1. Las cuentas creadas con el **registro nuevo de AWS** quedan como *sandbox* del plan gratuito, dentro de una organización que administra AWS, con un rol `AccountFullAccessRole` y una política de control de servicios (SCP) que solo permite una lista de servicios.
-2. En nuestra cuenta (`509306734195`) esa SCP (`p-8jgrv0xy`) niega con *explicit deny* `lambda:*`, `cloudformation:*`, `states:*`, `apigateway:*`, `s3:CreateBucket`, `ec2:RunInstances` y Lightsail. Solo deja leer y crear roles de IAM.
-3. Pasamos la cuenta al **plan de pago** (`aws freetier get-account-plan-state` → `PAID / ACTIVE`, 120 US$ de créditos), pero la SCP siguió activa después de 15 minutos de espera. Solo AWS Support puede retirarla.
-4. Mientras tanto, la app corre igual (mismo motor y misma API) en Vercel, y el servidor ya acepta `HOST`, `PORT` y `MAX_RUNS` para correr en un contenedor.
-
-En cuanto AWS retire la SCP, el despliegue es un comando (`scripts/deploy_aws.sh` con los parámetros de arriba) y esta sección se reemplaza por la URL pública.
-
-Seguridad: buckets privados (la web solo se lee desde CloudFront con OAC), un rol por función con el mínimo permiso (SAM policy templates), API con throttling y límites de parámetros en el motor, resultados cifrados y con expiración.
+Medido en la URL pública: «Recomendar» con 100 corridas ≈ 8 s; Modo Jurado en vivo, 24 brotes × 12 corridas en Step Functions ≈ 2 min; la semilla 2026 con 40 corridas da el hash `00e686fa2755` y 3 133,75 salvados, igual que en local y en Vercel.
 
 ### AWS Budget
 
