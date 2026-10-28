@@ -45,6 +45,7 @@ const ready = new Promise((resolve) => { resolveReady = resolve; });
 
 async function init() {
   initSettings();
+  initVerdictSheet();
   initMap();
   initPanels();
   initIntro();
@@ -236,6 +237,14 @@ function closePanel(name) {
 
 function togglePanel(name) {
   if ($(`#panel-${name}`)?.classList.contains("is-open")) closePanel(name); else openPanel(name);
+}
+
+// Phones: tapping the verdict's header (not its close button) expands or folds the bottom sheet.
+function initVerdictSheet() {
+  $("#panel-verdict .drawer__head").addEventListener("click", (e) => {
+    if (!isNarrow() || e.target.closest("[data-close]")) return;
+    $("#panel-verdict").classList.toggle("is-expanded");
+  });
 }
 
 function initSettings() {

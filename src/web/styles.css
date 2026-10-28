@@ -1081,3 +1081,15 @@ body.calm .chase__zombie { left: 30%; } body.calm .chase__victim { left: 58%; }
   .table-wrap { -webkit-overflow-scrolling: touch; scrollbar-width: thin;
     -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }  /* hints more columns */
 }
+
+/* Phones: the verdict is a bottom sheet over half the free space, so the map stays in view.
+   Tapping its header expands it to full height and back. */
+@media (max-width: 900px) {
+  #panel-verdict { top: auto; height: calc((100dvh - var(--top-h) - var(--dock-h) - var(--gap) * 4) * .62);
+    border-right: 0; border-top: 3px solid var(--ecto); border-radius: 14px 14px 4px 4px;
+    transition: opacity .25s ease, transform .3s cubic-bezier(.2, .8, .2, 1), height .3s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .3s; }
+  #panel-verdict.is-expanded { height: calc(100dvh - var(--top-h) - var(--dock-h) - var(--gap) * 4); }
+  #panel-verdict .drawer__head { position: relative; cursor: pointer; padding-top: 16px; }
+  #panel-verdict .drawer__head::before { content: ""; position: absolute; top: 6px; left: 50%; width: 42px; height: 4px;
+    margin-left: -21px; border-radius: 4px; background: rgba(255, 255, 255, .28); }
+}
