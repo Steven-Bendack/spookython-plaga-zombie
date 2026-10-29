@@ -72,6 +72,7 @@ def test_throttled_workers_are_retried(monkeypatch):
     fake = _FakeLambda(fail=2)
     monkeypatch.setattr(api, "_lambda", fake)
     monkeypatch.setattr(api.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(api, "_request_deadline", None)
     assert api.lambda_runner([{"chunk": 1}]) == [{"chunk": 1}]
     assert fake.calls == 3
 
@@ -99,3 +100,13 @@ def test_parse_and_news_routes(api):
     weeks = [{"week": 1, "zombies": 5, "bitten": 9, "vaccinated": 0, "barrios": ["Tarqui"]}]
     res = api.handler(_event("POST", "/api/news", {"weeks": weeks, "strategy": "degree"}), None)
     assert res["statusCode"] == 200 and len(json.loads(res["body"])["news"]) == 1
+
+
+def test_retry_deadline_is_shared_by_the_whole_request(monkeypatch):
+    # A second runner call (the closure plans) must not get a fresh 14 s budget.
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    from handlers import api
+    monkeypatch.setattr(api, "_lambda", _FakeLambda(fail=10**6))
+    monkeypatch.setattr(api, "_request_deadline", api.time.monotonic() - 1)
+    with pytest.raises(api.Busy):
+        api.lambda_runner([{"chunk": 1}, {"chunk": 2}])
