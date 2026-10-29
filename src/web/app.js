@@ -122,20 +122,25 @@ function initIntro() {
     globe = createGlobe($("#globe"), { reduce, worldUrl: "data/world-110m.json" });
   } catch { /* no d3: go straight to the map */ }
 
+  // ?demo=1 (live pitch): straight to the city, no music, no globe, no flight.
+  const demo = new URLSearchParams(location.search).has("demo");
+
   const enter = async () => {
     $("#enterSound").disabled = true;
-    try { await sound.start(); } catch { /* audio blocked: continue in silence */ }
+    if (!demo) {
+      try { await sound.start(); } catch { /* audio blocked: continue in silence */ }
+    }
     $("#introContent").classList.add("is-gone");
     $("#introTarget").hidden = false;
-    if (globe) await globe.descend();
+    if (globe && !demo) await globe.descend();
 
     // Hand over: the map is already at the globe's last view, so the fade is seamless.
     mapState.leaflet?.setView(MANTA, HANDOFF_ZOOM, { animate: false });
     intro.classList.add("is-leaving");
-    setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce ? 0 : 900);
+    setTimeout(() => { intro.hidden = true; globe?.stop(); }, reduce || demo ? 0 : 900);
     // The city stays in view while the camera lands: no card over the map.
-    await flyToCity(reduce);
-    sound.laugh();  // children playing far away: the city does not know yet
+    await flyToCity(reduce || demo);
+    if (!demo) sound.laugh();  // children playing far away: the city does not know yet
     $("#game").classList.add("is-live");
     $("#ticker").textContent = "Manta duerme tranquila… por ahora. Ajusta las condiciones y pulsa RECOMENDAR para simular el brote.";
     $("#runStatus").textContent = "Pulsa para simular el brote";
@@ -145,6 +150,7 @@ function initIntro() {
   };
   $("#enterSound").addEventListener("click", enter);
   $("#enterSound").focus();
+  if (demo) enter();
 }
 
 // Warm the browser cache with the satellite tiles of the current view (this zoom and the next),
