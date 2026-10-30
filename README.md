@@ -4,7 +4,7 @@
 
 > **URL pública en AWS: https://darwqtaqrduba.cloudfront.net** (us-east-2, Ohio) · Copia en Vercel: **https://plaga-zombie-manta.vercel.app** (máx. 40 corridas por petición y sin ataque en vivo del Modo Jurado; en AWS, 100 corridas en ≈ 8 s y el Modo Jurado corre en Step Functions)
 
-**Hoja de defensa ante el jurado (1 página):** [docs/defensa-jurado.pdf](docs/defensa-jurado.pdf) · **Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf)
+**Hoja de defensa ante el jurado (1 página):** [docs/defensa-jurado.pdf](docs/defensa-jurado.pdf) · **Pitch (PDF):** [docs/pitch/pitch-plaga-zombie.pdf](docs/pitch/pitch-plaga-zombie.pdf) · **Video (1:44):** [docs/pitch/pitch-video.mp4](docs/pitch/pitch-video.mp4)
 
 ![Arquitectura](docs/arquitectura.png)
 
