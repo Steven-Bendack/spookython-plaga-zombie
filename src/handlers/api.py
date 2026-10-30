@@ -40,7 +40,10 @@ MAX_FANOUT = int(os.environ.get("MAX_FANOUT", "10"))
 MAX_BODY = 16_384
 MAX_INTERACTIVE_RUNS = int(os.environ.get("MAX_INTERACTIVE_RUNS", "200"))
 THROTTLE_CODES = {"TooManyRequestsException", "ThrottlingException"}
-RETRY_DEADLINE = float(os.environ.get("RETRY_DEADLINE", "20"))  # seconds; API Gateway cuts at 29
+# Seconds from the start of the request. API Gateway cuts at 29 and a chunk
+# already running still needs ~4 s, so stop retrying well before that.
+RETRY_DEADLINE = float(os.environ.get("RETRY_DEADLINE", "14"))
+_request_deadline: float | None = None  # one request per Lambda container at a time
 
 
 class Busy(Exception):
@@ -64,8 +67,13 @@ def _invoke_with_retry(task: dict, deadline: float) -> dict:
 
 
 def lambda_runner(tasks: list[dict]) -> list[dict]:
-    """Run each chunk in its own worker Lambda, MAX_FANOUT at a time."""
-    deadline = time.monotonic() + RETRY_DEADLINE
+    """Run each chunk in its own worker Lambda, MAX_FANOUT at a time.
+
+    The retry deadline is shared by every runner call of one request (the
+    tournament and the closure plans), and a failure cancels the chunks that
+    have not started, so a busy account answers 503 instead of timing out.
+    """
+    deadline = _request_deadline or time.monotonic() + RETRY_DEADLINE
 
     def invoke(task):
         res = _invoke_with_retry(task, deadline)
@@ -74,11 +82,16 @@ def lambda_runner(tasks: list[dict]) -> list[dict]:
             raise RuntimeError(payload.get("errorMessage", "worker failed"))
         return payload
 
-    with ThreadPoolExecutor(max_workers=MAX_FANOUT) as pool:
+    pool = ThreadPoolExecutor(max_workers=MAX_FANOUT)
+    try:
         return list(pool.map(invoke, tasks))
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
 
 
 def handler(event, _context):
+    global _request_deadline
+    _request_deadline = time.monotonic() + RETRY_DEADLINE
     method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
     path = event.get("rawPath", "")
     try:
